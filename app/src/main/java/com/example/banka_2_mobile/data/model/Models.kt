@@ -108,3 +108,106 @@ data class CalculateExchangeResponse(
     val fromCurrency: String,
     val toCurrency: String
 )
+
+// ─── Celina 3: Berza / Securities Models ──────────────────
+
+// TODO: Verify all field names against backend ListingDto once endpoints are ready.
+//       Backend repo: RAF-SI-2025/Banka-2-Backend — check listing-service DTOs.
+//       Fields below are based on the project specification (Celina 3).
+
+data class Listing(
+    val id: Long,
+    val ticker: String,
+    val name: String,
+    val exchangeAcronym: String? = null,
+    val listingType: String,           // "STOCK", "FUTURES", "FOREX"
+    val price: Double,
+    val ask: Double? = null,
+    val bid: Double? = null,
+    val volume: Long? = null,
+    val priceChange: Double? = null,    // absolute change
+    val changePercent: Double? = null,  // percentage change (e.g. -2.35)
+    val high: Double? = null,
+    val low: Double? = null,
+    val marketCap: Long? = null,       // stocks only
+    val outstandingShares: Long? = null,// stocks only
+    val dividendYield: Double? = null,  // stocks only
+    val contractSize: Int? = null,      // futures only
+    val contractUnit: String? = null,   // futures only
+    val maintenanceMargin: Double? = null, // futures only
+    val settlementDate: String? = null  // futures only
+)
+
+data class ListingDailyPrice(
+    val date: String,
+    val price: Double,
+    val high: Double,
+    val low: Double,
+    val volume: Long
+)
+
+// TODO: Backend may return Spring Page<Listing> — confirm field names
+//       match PaginatedResponse<T> or if a separate DTO is used.
+//       If identical to PaginatedResponse, reuse that generic class instead.
+data class PaginatedListingResponse(
+    val content: List<Listing> = emptyList(),
+    val totalPages: Int = 0,
+    val totalElements: Long = 0,
+    val number: Int = 0,
+    val size: Int = 20
+)
+
+data class PortfolioItem(
+    val id: Long,
+    val listingTicker: String,
+    val listingName: String? = null,
+    val listingType: String? = null,       // "STOCK", "FUTURES"
+    val quantity: Int,
+    val averageBuyPrice: Double,
+    val currentPrice: Double? = null,
+    val profit: Double? = null,
+    val profitPercent: Double? = null,
+    val publicQuantity: Int? = null,        // quantity visible to other users
+    val inOrderQuantity: Int? = null        // quantity locked in pending orders
+)
+
+data class PortfolioSummary(
+    val totalValue: Double,
+    val totalProfit: Double,
+    val totalProfitPercent: Double? = null,
+    val taxOwed: Double? = null            // porez na kapitalnu dobit
+)
+
+// TODO: Confirm order types and directions with backend.
+//       Spec says: orderType = MARKET | LIMIT | STOP | STOP_LIMIT
+//       direction = BUY | SELL
+//       allOrNone = boolean (AON flag)
+//       Backend may also require accountId for settlement.
+data class CreateOrderRequest(
+    val listingId: Long,
+    val orderType: String,      // "MARKET", "LIMIT", "STOP", "STOP_LIMIT"
+    val quantity: Int,
+    val direction: String,      // "BUY", "SELL"
+    val limitPrice: Double? = null,
+    val stopPrice: Double? = null,
+    val allOrNone: Boolean = false,
+    val accountId: Long? = null  // settlement account
+)
+
+data class OrderResponse(
+    val id: Long,
+    val listingId: Long? = null,
+    val listingTicker: String? = null,
+    val listingName: String? = null,
+    val orderType: String,           // "MARKET", "LIMIT", "STOP", "STOP_LIMIT"
+    val direction: String,           // "BUY", "SELL"
+    val quantity: Int,
+    val filledQuantity: Int? = null,
+    val limitPrice: Double? = null,
+    val stopPrice: Double? = null,
+    val status: String,              // "PENDING", "APPROVED", "DONE", "DECLINED", "CANCELLED"
+    val allOrNone: Boolean? = null,
+    val fee: Double? = null,
+    val createdAt: String? = null,
+    val updatedAt: String? = null
+)

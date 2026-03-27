@@ -5,23 +5,32 @@ import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.Shield
+import androidx.compose.material.icons.filled.ShowChart
 import androidx.compose.material.icons.filled.TrendingUp
+import androidx.compose.material.icons.filled.WorkOutline
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.example.banka_2_mobile.data.repository.AuthRepository
 import com.example.banka_2_mobile.ui.cards.CardsScreen
 import com.example.banka_2_mobile.ui.exchange.ExchangeScreen
 import com.example.banka_2_mobile.ui.home.HomeScreen
 import com.example.banka_2_mobile.ui.login.LoginScreen
+import com.example.banka_2_mobile.ui.orders.CreateOrderScreen
+import com.example.banka_2_mobile.ui.orders.MyOrdersScreen
 import com.example.banka_2_mobile.ui.otp.OtpScreen
+import com.example.banka_2_mobile.ui.portfolio.PortfolioScreen
+import com.example.banka_2_mobile.ui.securities.SecuritiesScreen
+import com.example.banka_2_mobile.ui.securities.SecurityDetailScreen
 import com.example.banka_2_mobile.ui.transactions.TransactionsScreen
 
 object Routes {
@@ -31,7 +40,45 @@ object Routes {
     const val CARDS = "cards"
     const val EXCHANGE = "exchange"
     const val OTP = "otp"
+
+    // ─── Celina 3: Berza routes ──────────────────────────
+    const val SECURITIES = "securities"
+    const val SECURITY_DETAIL = "securities/{listingId}"
+    const val PORTFOLIO = "portfolio"
+    const val CREATE_ORDER = "create_order/{listingId}/{direction}"
+    const val MY_ORDERS = "my_orders"
+
+    // Helper functions for building routes with arguments
+    fun securityDetail(listingId: Long) = "securities/$listingId"
+    fun createOrder(listingId: Long, direction: String) = "create_order/$listingId/$direction"
 }
+
+// TODO: Bottom navigation tab strategy for Celina 3 integration
+//
+// CURRENT TABS (5): Transakcije | Kartice | [POCETNA] | Menjacnica | OTP
+//
+// OPTION A — Replace non-essential tabs with Celina 3 features:
+//   Berza | Portfolio | [POCETNA] | Nalozi | OTP
+//   Pros: Clean 5-tab layout, Celina 3 is front-and-center
+//   Cons: Hides Transactions/Cards/Exchange — need to access them from HomeScreen
+//         or a "More" menu within HomeScreen
+//
+// OPTION B — Keep current tabs, add Celina 3 as sub-navigation from HomeScreen:
+//   Transakcije | Kartice | [POCETNA] | Menjacnica | OTP
+//   HomeScreen gets horizontal quick-action buttons: "Berza", "Portfolio", "Nalozi"
+//   Pros: No breaking change, backward compatible
+//   Cons: Celina 3 features are less discoverable
+//
+// OPTION C — Expand to scrollable tab bar or "More" overflow:
+//   Berza | Portfolio | [POCETNA] | Nalozi | Vise...
+//   "Vise" opens a bottom sheet with: Transakcije, Kartice, Menjacnica, OTP
+//   Pros: All features accessible, Celina 3 prominent
+//   Cons: Extra tap to reach Celina 2 features
+//
+// RECOMMENDATION: Go with OPTION A for KT3 since berza is the focus of Celina 3.
+//   Move Transactions/Cards/Exchange access to HomeScreen as quick-action cards.
+//   For now, keeping original tabs active until Celina 3 screens are implemented.
+//   When ready, swap bottomNavItems to bottomNavItemsCelina3 below.
 
 private val bottomNavItems = listOf(
     BottomNavItem(
@@ -62,13 +109,50 @@ private val bottomNavItems = listOf(
     )
 )
 
+// TODO: Activate this list when Celina 3 screens are fully implemented.
+//       Replace `bottomNavItems` usage in NavGraph() with `bottomNavItemsCelina3`.
+@Suppress("unused")
+private val bottomNavItemsCelina3 = listOf(
+    BottomNavItem(
+        route = Routes.SECURITIES,
+        label = "Berza",
+        icon = Icons.Filled.ShowChart
+    ),
+    BottomNavItem(
+        route = Routes.PORTFOLIO,
+        label = "Portfolio",
+        icon = Icons.Filled.WorkOutline
+    ),
+    BottomNavItem(
+        route = Routes.HOME,
+        label = "Pocetna",
+        icon = Icons.Filled.AccountBalanceWallet,
+        isCenter = true
+    ),
+    BottomNavItem(
+        route = Routes.MY_ORDERS,
+        label = "Nalozi",
+        icon = Icons.Filled.Receipt
+    ),
+    BottomNavItem(
+        route = Routes.OTP,
+        label = "OTP",
+        icon = Icons.Filled.Shield
+    )
+)
+
 // Routes that show the bottom nav bar
+// TODO: When Celina 3 tabs are activated (see BottomNavBar TODO), add
+//       Routes.SECURITIES, Routes.PORTFOLIO, Routes.MY_ORDERS here.
 private val mainRoutes = setOf(
     Routes.HOME,
     Routes.TRANSACTIONS,
     Routes.CARDS,
     Routes.EXCHANGE,
-    Routes.OTP
+    Routes.OTP,
+    Routes.SECURITIES,
+    Routes.PORTFOLIO,
+    Routes.MY_ORDERS
 )
 
 @Composable
@@ -142,6 +226,64 @@ fun NavGraph() {
 
             composable(Routes.OTP) {
                 OtpScreen(onLogout = navigateToLogin)
+            }
+
+            // ─── Celina 3: Berza routes ──────────────────────
+
+            composable(Routes.SECURITIES) {
+                SecuritiesScreen(
+                    onLogout = navigateToLogin,
+                    onListingClick = { listingId ->
+                        navController.navigate(Routes.securityDetail(listingId))
+                    }
+                )
+            }
+
+            composable(
+                route = Routes.SECURITY_DETAIL,
+                arguments = listOf(
+                    navArgument("listingId") { type = NavType.LongType }
+                )
+            ) { backStackEntry ->
+                val listingId = backStackEntry.arguments?.getLong("listingId") ?: 0L
+                SecurityDetailScreen(
+                    listingId = listingId,
+                    onBack = { navController.popBackStack() },
+                    onLogout = navigateToLogin,
+                    onOrderClick = { id, direction ->
+                        navController.navigate(Routes.createOrder(id, direction))
+                    }
+                )
+            }
+
+            composable(Routes.PORTFOLIO) {
+                PortfolioScreen(
+                    onLogout = navigateToLogin,
+                    onSellClick = { listingId, direction ->
+                        navController.navigate(Routes.createOrder(listingId, direction))
+                    }
+                )
+            }
+
+            composable(
+                route = Routes.CREATE_ORDER,
+                arguments = listOf(
+                    navArgument("listingId") { type = NavType.LongType },
+                    navArgument("direction") { type = NavType.StringType }
+                )
+            ) { backStackEntry ->
+                val listingId = backStackEntry.arguments?.getLong("listingId") ?: 0L
+                val direction = backStackEntry.arguments?.getString("direction") ?: "BUY"
+                CreateOrderScreen(
+                    listingId = listingId,
+                    initialDirection = direction,
+                    onBack = { navController.popBackStack() },
+                    onLogout = navigateToLogin
+                )
+            }
+
+            composable(Routes.MY_ORDERS) {
+                MyOrdersScreen(onLogout = navigateToLogin)
             }
         }
     }
