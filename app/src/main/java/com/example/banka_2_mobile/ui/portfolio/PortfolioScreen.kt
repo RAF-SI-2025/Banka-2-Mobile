@@ -49,10 +49,9 @@ import com.example.banka_2_mobile.data.repository.AuthRepository
 import com.example.banka_2_mobile.ui.theme.DarkBg
 import com.example.banka_2_mobile.ui.theme.DarkCard
 import com.example.banka_2_mobile.ui.theme.DarkCardBorder
-import com.example.banka_2_mobile.ui.theme.Indigo400
+import com.example.banka_2_mobile.ui.theme.ErrorRed
 import com.example.banka_2_mobile.ui.theme.Indigo500
 import com.example.banka_2_mobile.ui.theme.SuccessGreen
-import com.example.banka_2_mobile.ui.theme.ErrorRed
 import com.example.banka_2_mobile.ui.theme.TextMuted
 import com.example.banka_2_mobile.ui.theme.Violet600
 import com.example.banka_2_mobile.ui.theme.WarningYellow
@@ -214,16 +213,433 @@ fun PortfolioScreen(
     //       - PullToRefreshBox wrapping
     //       - SnackbarHost for errors
 
+    val context = LocalContext.current
+    val authRepository = remember { AuthRepository(context) }
+    val scope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    var holdings by remember { mutableStateOf<List<PortfolioItem>>(emptyList()) }
+    var summary by remember { mutableStateOf<PortfolioSummary?>(null) }
+    var isLoading by remember { mutableStateOf(true) }
+    var isRefreshing by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+
+    suspend fun fetchPortfolio() {
+        try {
+            val holdingsResponse = RetrofitClient.api.getMyPortfolio()
+            val summaryResponse = RetrofitClient.api.getPortfolioSummary()
+
+            if (holdingsResponse.code() == 401 || summaryResponse.code() == 401) {
+                authRepository.clearTokens()
+                onLogout()
+                return
+            }
+
+            if (holdingsResponse.isSuccessful) {
+                holdings = holdingsResponse.body() ?: emptyList()
+            }
+            if (summaryResponse.isSuccessful) {
+                summary = summaryResponse.body()
+            }
+        } catch (e: Exception) {
+            errorMessage = "Greška u mreži. Proverite konekciju."
+        }
+        isLoading = false
+        isRefreshing = false
+    }
+
+    LaunchedEffect(Unit) { fetchPortfolio() }
+
+    LaunchedEffect(errorMessage) {
+        errorMessage?.let {
+            snackbarHostState.showSnackbar(it)
+            errorMessage = null
+        }
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(DarkBg),
         contentAlignment = Alignment.Center
     ) {
-        Text(
-            text = "Portfolio - TODO",
-            color = Color.White,
-            fontSize = 20.sp
+        PullToRefreshBox(
+            isRefreshing = isRefreshing,
+            onRefresh = {
+                isRefreshing = true
+                scope.launch { fetchPortfolio() }
+            }
+        ) {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 20.dp)
+            ) {
+                // ── 1. PAGE HEADER ──────────────────────────────────────────
+                item {
+                    Spacer(modifier = Modifier.height(20.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .width(4.dp)
+                                .height(20.dp)
+                                .clip(RoundedCornerShape(2.dp))
+                                .background(
+                                    Brush.linearGradient(
+                                        colors = listOf(Indigo500, Violet600),
+                                        start = Offset(0f, 0f),
+                                        end = Offset(0f, Float.POSITIVE_INFINITY)
+                                    )
+                                )
+                        )
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Text(
+                            text = "Portfolio",
+                            fontSize = 17.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color.White
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(20.dp))
+                }
+
+                // ── 2. SUMMARY CARD ─────────────────────────────────────────
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(
+                                Brush.linearGradient(
+                                    colors = listOf(Indigo500, Violet600),
+                                    start = Offset(0f, 0f),
+                                    end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
+                                )
+                            )
+                            .padding(24.dp)
+                    ) {
+                        Column {
+                            Text(
+                                text = "Ukupna vrednost",
+                                fontSize = 14.sp,
+                                color = Color.White.copy(alpha = 0.7f)
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = summary?.let { formatCurrency(it.totalValue) } ?: "—",
+                                fontSize = 32.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White,
+                                fontFamily = FontFamily.Default
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            summary?.let { s ->
+                                val profitColor = if (s.totalProfit >= 0) SuccessGreen else ErrorRed
+                                val profitSign = if (s.totalProfit >= 0) "+" else ""
+
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        text = "Profit/Gubitak: ",
+                                        fontSize = 13.sp,
+                                        color = Color.White.copy(alpha = 0.6f)
+                                    )
+                                    Text(
+                                        text = "$profitSign${formatCurrency(s.totalProfit)} (${profitSign}${
+                                            formatPercent(
+                                                s.totalProfitPercent!!
+                                            )
+                                        }%)",
+                                        fontSize = 13.sp,
+                                        color = profitColor,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                }
+
+                                s.taxOwed?.let { tax ->
+                                    Spacer(modifier = Modifier.height(6.dp))
+                                    Text(
+                                        text = "Porez na kapitalnu dobit: ${formatCurrency(tax)} RSD",
+                                        fontSize = 12.sp,
+                                        color = Color.White.copy(alpha = 0.5f)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(24.dp))
+                }
+
+                // ── 3. SECTION TITLE ────────────────────────────────────────
+                item {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .width(4.dp)
+                                .height(16.dp)
+                                .clip(RoundedCornerShape(2.dp))
+                                .background(
+                                    Brush.linearGradient(
+                                        colors = listOf(Indigo500, Violet600),
+                                        start = Offset(0f, 0f),
+                                        end = Offset(0f, Float.POSITIVE_INFINITY)
+                                    )
+                                )
+                        )
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Text(
+                            text = "Vaše hartije",
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color.White
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(14.dp))
+                }
+
+                // ── 4. HOLDINGS LIST ────────────────────────────────────────
+                if (holdings.isNotEmpty()) {
+                    items(holdings) { item ->
+                        PortfolioItemCard(
+                            item = item,
+                            onSellClick = { onSellClick(item.id, "SELL") }
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                    }
+                }
+
+                // ── 5. EMPTY STATE ──────────────────────────────────────────
+                if (holdings.isEmpty() && !isLoading) {
+                    item {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 60.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(64.dp)
+                                    .clip(CircleShape)
+                                    .background(DarkCard),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(text = "📊", fontSize = 28.sp)
+                            }
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(
+                                text = "Nemate hartija u portfoliu",
+                                fontSize = 17.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = Color.White,
+                                textAlign = TextAlign.Center
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "Kupite prvu hartiju na berzi",
+                                fontSize = 13.sp,
+                                color = TextMuted,
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    }
+                }
+
+                // ── 6. BOTTOM SPACING ───────────────────────────────────────
+                item {
+                    Spacer(modifier = Modifier.height(90.dp))
+                }
+
+                /*Text(
+                    text = "Portfolio - TODO",
+                    color = Color.White,
+                    fontSize = 20.sp
+                )*/
+            }
+        }
+
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier.align(Alignment.BottomCenter)
         )
     }
+}
+
+
+// ── PortfolioItemCard ────────────────────────────────────────────────────────
+
+@Composable
+private fun PortfolioItemCard(
+    item: PortfolioItem,
+    onSellClick: () -> Unit
+) {
+    val profit = item.profit ?: 0.0
+    val profitPercent = item.profitPercent ?: 0.0
+    val profitColor = if (profit >= 0) SuccessGreen else ErrorRed
+    val profitSign = if (profit >= 0) "+" else ""
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(DarkCard)
+            .padding(20.dp)
+    ) {
+        Column {
+            // Ticker + type badge
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = item.listingTicker,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = FontFamily.Monospace,
+                    color = Color.White
+                )
+                Spacer(modifier = Modifier.width(10.dp))
+                item.listingType?.let { type ->
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(
+                                DarkCardBorder)
+                            .padding(horizontal = 8.dp, vertical = 3.dp)
+                    ) {
+                        Text(
+                            text = type,
+                            fontSize = 10.sp,
+                            color = TextMuted,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+            }
+
+            // Name
+            item.listingName?.let { name ->
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(text = name, fontSize = 13.sp, color = TextMuted)
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Količina + Prosečna cena
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column {
+                    Text(text = "Količina", fontSize = 12.sp, color = TextMuted)
+                    Text(
+                        text = item.quantity.toString(),
+                        fontSize = 14.sp,
+                        color = Color.White,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(text = "Prosečna cena", fontSize = 12.sp, color = TextMuted)
+                    Text(
+                        text = formatCurrency(item.averageBuyPrice),
+                        fontSize = 14.sp,
+                        color = Color.White,
+                        fontFamily = FontFamily.Monospace
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Trenutna cena + U nalozima
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column {
+                    Text(text = "Trenutna cena", fontSize = 12.sp, color = TextMuted)
+                    Text(
+                        text = formatCurrency(item.currentPrice!!),
+                        fontSize = 14.sp,
+                        color = Color.White,
+                        fontFamily = FontFamily.Monospace
+                    )
+                }
+                if ((item.inOrderQuantity ?: 0) > 0) {
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text(text = "U nalozima", fontSize = 12.sp, color = TextMuted)
+                        Text(
+                            text = item.inOrderQuantity.toString(),
+                            fontSize = 14.sp,
+                            color = WarningYellow,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Profit/Loss + Prodaj dugme
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(text = "Profit/Gubitak", fontSize = 12.sp, color = TextMuted)
+                    Text(
+                        text = "$profitSign${formatCurrency(profit)} (${profitSign}${
+                            formatPercent(
+                                profitPercent
+                            )
+                        }%)",
+                        fontSize = 14.sp,
+                        color = profitColor,
+                        fontWeight = FontWeight.SemiBold,
+                        fontFamily = FontFamily.Monospace
+                    )
+                }
+
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(
+                            Brush.linearGradient(
+                                colors = listOf(ErrorRed, Color(0xFFDC2626)),
+                                start = Offset(0f, 0f),
+                                end = Offset(Float.POSITIVE_INFINITY, 0f)
+                            )
+                        )
+                ) {
+                    Button(
+                        onClick = onSellClick,
+                        colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                            horizontal = 16.dp,
+                            vertical = 8.dp
+                        )
+                    ) {
+                        Text(
+                            text = "Prodaj",
+                            color = Color.White,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+private fun formatCurrency(value: Double): String {
+    return "%,.2f RSD".format(value)
+}
+
+private fun formatPercent(value: Double): String {
+    return "%.2f".format(value)
 }
