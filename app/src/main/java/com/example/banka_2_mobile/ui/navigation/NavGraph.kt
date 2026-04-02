@@ -54,33 +54,6 @@ object Routes {
     fun createOrder(listingId: Long, direction: String) = "create_order/$listingId/$direction"
 }
 
-// TODO: Bottom navigation tab strategy for Celina 3 integration
-//
-// CURRENT TABS (5): Transakcije | Kartice | [POCETNA] | Menjacnica | OTP
-//
-// OPTION A — Replace non-essential tabs with Celina 3 features:
-//   Berza | Portfolio | [POCETNA] | Nalozi | OTP
-//   Pros: Clean 5-tab layout, Celina 3 is front-and-center
-//   Cons: Hides Transactions/Cards/Exchange — need to access them from HomeScreen
-//         or a "More" menu within HomeScreen
-//
-// OPTION B — Keep current tabs, add Celina 3 as sub-navigation from HomeScreen:
-//   Transakcije | Kartice | [POCETNA] | Menjacnica | OTP
-//   HomeScreen gets horizontal quick-action buttons: "Berza", "Portfolio", "Nalozi"
-//   Pros: No breaking change, backward compatible
-//   Cons: Celina 3 features are less discoverable
-//
-// OPTION C — Expand to scrollable tab bar or "More" overflow:
-//   Berza | Portfolio | [POCETNA] | Nalozi | Vise...
-//   "Vise" opens a bottom sheet with: Transakcije, Kartice, Menjacnica, OTP
-//   Pros: All features accessible, Celina 3 prominent
-//   Cons: Extra tap to reach Celina 2 features
-//
-// RECOMMENDATION: Go with OPTION A for KT3 since berza is the focus of Celina 3.
-//   Move Transactions/Cards/Exchange access to HomeScreen as quick-action cards.
-//   For now, keeping original tabs active until Celina 3 screens are implemented.
-//   When ready, swap bottomNavItems to bottomNavItemsCelina3 below.
-
 private val bottomNavItems = listOf(
     BottomNavItem(
         route = Routes.SECURITIES,
@@ -110,78 +83,6 @@ private val bottomNavItems = listOf(
     )
 )
 
-/*
-//  TODO: REMOVE
-private val bottomNavItems = listOf(
-    BottomNavItem(
-        route = Routes.SECURITIES,
-        label = "Berza",
-        icon = Icons.AutoMirrored.Filled.ShowChart
-    ),
-    BottomNavItem(
-        route = Routes.PORTFOLIO,
-        label = "Portfolio",
-        icon = Icons.Filled.WorkOutline
-    ),
-    BottomNavItem(
-        route = Routes.HOME,
-        label = "Početna",
-        icon = Icons.Filled.AccountBalanceWallet,
-        isCenter = true
-    ),
-    BottomNavItem(
-        route = Routes.MY_ORDERS,
-        label = "Nalozi",
-        icon = Icons.Filled.Receipt
-    ),
-    BottomNavItem(
-        route = Routes.OTP,
-        label = "OTP",
-        icon = Icons.Filled.Shield
-    )
-)
-*/
-
-// TODO: Activate this list when Celina 3 screens are fully implemented.
-//       Replace `bottomNavItems` usage in NavGraph() with `bottomNavItemsCelina3`.
-//  DONE
-/*
-//  Ukloni ovaj blok
-@Suppress("unused")
-private val bottomNavItemsCelina3 = listOf(
-    BottomNavItem(
-        route = Routes.SECURITIES,
-        label = "Berza",
-        icon = Icons.Filled.ShowChart
-    ),
-    BottomNavItem(
-        route = Routes.PORTFOLIO,
-        label = "Portfolio",
-        icon = Icons.Filled.WorkOutline
-    ),
-    BottomNavItem(
-        route = Routes.HOME,
-        label = "Pocetna",
-        icon = Icons.Filled.AccountBalanceWallet,
-        isCenter = true
-    ),
-    BottomNavItem(
-        route = Routes.MY_ORDERS,
-        label = "Nalozi",
-        icon = Icons.Filled.Receipt
-    ),
-    BottomNavItem(
-        route = Routes.OTP,
-        label = "OTP",
-        icon = Icons.Filled.Shield
-    )
-)
-*/
-
-// Routes that show the bottom nav bar
-// TODO: When Celina 3 tabs are activated (see BottomNavBar TODO), add
-//       Routes.SECURITIES, Routes.PORTFOLIO, Routes.MY_ORDERS here.
-//  DONE
 private val mainRoutes = setOf(
     Routes.HOME,
     Routes.TRANSACTIONS,

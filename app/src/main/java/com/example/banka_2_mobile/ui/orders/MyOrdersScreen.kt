@@ -23,7 +23,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -57,7 +56,6 @@ import com.example.banka_2_mobile.ui.theme.ErrorRed
 import com.example.banka_2_mobile.ui.theme.Indigo400
 import com.example.banka_2_mobile.ui.theme.Indigo500
 import com.example.banka_2_mobile.ui.theme.SuccessGreen
-import com.example.banka_2_mobile.ui.theme.ErrorRed
 import com.example.banka_2_mobile.ui.theme.TextMuted
 import com.example.banka_2_mobile.ui.theme.Violet600
 import com.example.banka_2_mobile.ui.theme.WarningYellow
@@ -157,41 +155,6 @@ import java.util.Locale
 //
 //   6. BOTTOM SPACING
 //      - Spacer(height = 90.dp) for BottomNavBar clearance
-//
-// ──────────────────────────────────────────────────────────────────────────────
-// STATE VARIABLES:
-// ──────────────────────────────────────────────────────────────────────────────
-//
-//   var orders by remember { mutableStateOf<List<OrderResponse>>(emptyList()) }
-//   var isLoading by remember { mutableStateOf(true) }
-//   var isRefreshing by remember { mutableStateOf(false) }
-//   var errorMessage by remember { mutableStateOf<String?>(null) }
-//
-// ──────────────────────────────────────────────────────────────────────────────
-// API CALLS:
-// ──────────────────────────────────────────────────────────────────────────────
-//
-//   suspend fun fetchOrders() {
-//       try {
-//           val response = RetrofitClient.api.getMyOrders()
-//           if (response.isSuccessful) {
-//               orders = response.body() ?: emptyList()
-//           } else if (response.code() == 401) {
-//               authRepository.clearTokens()
-//               onLogout()
-//               return
-//           } else {
-//               errorMessage = "Greska pri ucitavanju naloga (${response.code()})"
-//           }
-//       } catch (e: Exception) {
-//           errorMessage = "Greska u mrezi. Proverite konekciju."
-//       }
-//       isLoading = false
-//       isRefreshing = false
-//   }
-//
-//   LaunchedEffect(Unit) { fetchOrders() }
-//
 // ──────────────────────────────────────────────────────────────────────────────
 // NAVIGATION:
 // ──────────────────────────────────────────────────────────────────────────────
@@ -200,77 +163,8 @@ import java.util.Locale
 //     onLogout: () -> Unit
 //
 // ──────────────────────────────────────────────────────────────────────────────
-// HELPER FUNCTIONS:
-// ──────────────────────────────────────────────────────────────────────────────
-//
-//   private fun statusLabel(status: String): String {
-//       return when (status.uppercase()) {
-//           "PENDING" -> "Na cekanju"
-//           "APPROVED" -> "Odobren"
-//           "DONE" -> "Izvrsen"
-//           "DECLINED" -> "Odbijen"
-//           "CANCELLED" -> "Otkazan"
-//           else -> status
-//       }
-//   }
-//
-//   private fun statusColor(status: String): Color {
-//       return when (status.uppercase()) {
-//           "PENDING" -> WarningYellow
-//           "APPROVED" -> Indigo400
-//           "DONE" -> SuccessGreen
-//           "DECLINED" -> ErrorRed
-//           "CANCELLED" -> TextMuted
-//           else -> TextMuted
-//       }
-//   }
-//
-//   private fun orderTypeLabel(type: String): String {
-//       return when (type.uppercase()) {
-//           "MARKET" -> "Market nalog"
-//           "LIMIT" -> "Limit nalog"
-//           "STOP" -> "Stop nalog"
-//           "STOP_LIMIT" -> "Stop-Limit nalog"
-//           else -> type
-//       }
-//   }
-//
-//   private fun formatOrderDate(isoDate: String?): String {
-//       // Parse ISO 8601 date and format as "dd.MM.yyyy HH:mm"
-//       // Use SimpleDateFormat or java.time if minSdk >= 26
-//   }
-//
-// ══════════════════════════════════════════════════════════════════════════════
 
-/*
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun MyOrdersScreen(
-    onLogout: () -> Unit
-) {
-    // TODO: Implement the full screen following the layout described above.
-    //       Use HomeScreen.kt as the primary reference for:
-    //       - LazyColumn with items() pattern
-    //       - PullToRefreshBox wrapping
-    //       - Badge styling (see statusColor/statusLabel in HomeScreen)
-    //       - LoadingShimmer pattern
-    //       - EmptyState pattern
-    //       - SnackbarHost for errors
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(DarkBg),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = "My Orders - TODO",
-            color = Color.White,
-            fontSize = 20.sp
-        )
-    }
-}
-*/
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -280,7 +174,7 @@ fun MyOrdersScreen(
     val context = LocalContext.current
     val authRepository = remember { AuthRepository(context) }
     val scope = rememberCoroutineScope()
-    val snackbarHostState = remember { SnackbarHostState() }
+    val snackBarHostState = remember { SnackbarHostState() }
 
     var orders by remember { mutableStateOf<List<OrderResponse>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
@@ -310,7 +204,7 @@ fun MyOrdersScreen(
 
     LaunchedEffect(errorMessage) {
         errorMessage?.let {
-            snackbarHostState.showSnackbar(it)
+            snackBarHostState.showSnackbar(it)
             errorMessage = null
         }
     }
@@ -419,7 +313,7 @@ fun MyOrdersScreen(
         }
 
         SnackbarHost(
-            hostState = snackbarHostState,
+            hostState = snackBarHostState,
             modifier = Modifier.align(Alignment.BottomCenter)
         )
     }
