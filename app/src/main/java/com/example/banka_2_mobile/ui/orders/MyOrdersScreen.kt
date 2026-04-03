@@ -10,8 +10,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -57,113 +59,12 @@ import com.example.banka_2_mobile.ui.theme.Indigo400
 import com.example.banka_2_mobile.ui.theme.Indigo500
 import com.example.banka_2_mobile.ui.theme.SuccessGreen
 import com.example.banka_2_mobile.ui.theme.TextMuted
+import com.example.banka_2_mobile.ui.theme.TextWhite
 import com.example.banka_2_mobile.ui.theme.Violet600
 import com.example.banka_2_mobile.ui.theme.WarningYellow
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Locale
-
-// ══════════════════════════════════════════════════════════════════════════════
-// TODO: MyOrdersScreen — List of user's submitted orders
-// ══════════════════════════════════════════════════════════════════════════════
-//
-// OVERVIEW:
-//   Shows all orders placed by the current user with their status,
-//   direction, quantity, and type information.
-//
-// ──────────────────────────────────────────────────────────────────────────────
-// UI LAYOUT (top to bottom, LazyColumn with PullToRefreshBox):
-// ──────────────────────────────────────────────────────────────────────────────
-//
-//   1. PAGE HEADER (same pattern as HomeScreen)
-//      - Row with gradient accent bar (w=4.dp, h=20.dp, Indigo500->Violet600)
-//      - Title: "Moji nalozi" (17.sp, SemiBold, White)
-//
-//   2. ORDERS LIST (LazyColumn items)
-//      Each OrderResponse rendered as a DarkCard:
-//
-//      ┌──────────────────────────────────────────────────┐
-//      │  AAPL  [KUPI]                    [NA CEKANJU]   │
-//      │  Market nalog                                    │
-//      │  Kolicina: 50    Cena: Market                   │
-//      │  Datum: 27.03.2026                               │
-//      └──────────────────────────────────────────────────┘
-//
-//      - Container: DarkCard, RoundedCornerShape(16.dp), padding 16.dp
-//      - Top row (SpaceBetween):
-//        * Left side:
-//          - Ticker: 16.sp, Bold, FontFamily.Monospace, Color.White
-//            (order.listingTicker ?: "N/A")
-//          - Direction badge (pill):
-//            * BUY: bg = SuccessGreen.copy(alpha=0.15f), text = SuccessGreen
-//              label = "KUPI"
-//            * SELL: bg = ErrorRed.copy(alpha=0.15f), text = ErrorRed
-//              label = "PRODAJ"
-//            * RoundedCornerShape(8.dp), padding h=10.dp v=4.dp
-//            * 11.sp, SemiBold
-//        * Right side:
-//          - Status badge (pill):
-//            * PENDING: bg = WarningYellow.copy(alpha=0.15f), text = WarningYellow
-//              label = "Na cekanju"
-//            * APPROVED: bg = Indigo400.copy(alpha=0.15f), text = Indigo400
-//              label = "Odobren"
-//            * DONE: bg = SuccessGreen.copy(alpha=0.15f), text = SuccessGreen
-//              label = "Izvrsen"
-//            * DECLINED: bg = ErrorRed.copy(alpha=0.15f), text = ErrorRed
-//              label = "Odbijen"
-//            * CANCELLED: bg = TextMuted.copy(alpha=0.15f), text = TextMuted
-//              label = "Otkazan"
-//            * RoundedCornerShape(8.dp), padding h=10.dp v=4.dp
-//            * 11.sp, Medium
-//
-//      - Order type line:
-//        * Map orderType to display: "MARKET"->"Market nalog", "LIMIT"->"Limit nalog",
-//          "STOP"->"Stop nalog", "STOP_LIMIT"->"Stop-Limit nalog"
-//        * 13.sp, TextMuted
-//
-//      - Details row:
-//        * "Kolicina: X" (13.sp, White)
-//          - If filledQuantity != null and filledQuantity != quantity:
-//            append " (izvrseno: Y)" in TextMuted
-//        * Price info (13.sp, Monospace, White):
-//          - MARKET: "Cena: Market"
-//          - LIMIT: "Limit: X.XX"
-//          - STOP: "Stop: X.XX"
-//          - STOP_LIMIT: "Limit: X.XX / Stop: Y.YY"
-//        * Fee (if not null): "Provizija: X.XX" (12.sp, TextMuted)
-//
-//      - Date row:
-//        * "Datum:" + formatted createdAt (13.sp, TextMuted)
-//        * Format: parse ISO date, display as "dd.MM.yyyy HH:mm"
-//
-//      - If allOrNone == true: show small "AON" pill badge (DarkCardBorder bg, TextMuted text)
-//
-//      - Spacing between items: 12.dp
-//
-//   3. LOADING STATE
-//      - 4 shimmer skeleton cards (fillMaxWidth, h=100.dp, RoundedCornerShape(16.dp))
-//      - Same pattern as HomeScreen LoadingShimmer
-//
-//   4. EMPTY STATE
-//      - CircleShape icon container (64.dp, bg = DarkCard)
-//        * Emoji or icon representing orders/receipts
-//      - Title: "Nemate naloge" (17.sp, Medium, White)
-//      - Subtitle: "Kada kreirate nalog na berzi, pojavice se ovde" (13.sp, TextMuted)
-//
-//   5. PULL-TO-REFRESH
-//      - Wrap in PullToRefreshBox (same pattern as HomeScreen)
-//
-//   6. BOTTOM SPACING
-//      - Spacer(height = 90.dp) for BottomNavBar clearance
-// ──────────────────────────────────────────────────────────────────────────────
-// NAVIGATION:
-// ──────────────────────────────────────────────────────────────────────────────
-//
-//   Parameters:
-//     onLogout: () -> Unit
-//
-// ──────────────────────────────────────────────────────────────────────────────
-
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -226,7 +127,7 @@ fun MyOrdersScreen(
                     .fillMaxSize()
                     .padding(horizontal = 20.dp)
             ) {
-                // ── 1. HEADER ───────────────────────────────────────────────
+                // -- 1. HEADER -------------------------------------------------------
                 item {
                     Spacer(modifier = Modifier.height(20.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -248,13 +149,13 @@ fun MyOrdersScreen(
                             text = "Moji nalozi",
                             fontSize = 17.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = Color.White
+                            color = TextWhite
                         )
                     }
                     Spacer(modifier = Modifier.height(16.dp))
                 }
 
-                // ── 3. LOADING STATE ────────────────────────────────────────
+                // -- 3. LOADING STATE ------------------------------------------------
                 if (isLoading) {
                     items(4) {
                         OrderShimmerCard()
@@ -262,7 +163,7 @@ fun MyOrdersScreen(
                     }
                 }
 
-                // ── 2. ORDERS LIST ──────────────────────────────────────────
+                // -- 2. ORDERS LIST --------------------------------------------------
                 if (!isLoading) {
                     if (orders.isNotEmpty()) {
                         items(orders) { order ->
@@ -270,7 +171,7 @@ fun MyOrdersScreen(
                             Spacer(modifier = Modifier.height(12.dp))
                         }
                     } else {
-                        // ── 4. EMPTY STATE ──────────────────────────────────
+                        // -- 4. EMPTY STATE ----------------------------------------------
                         item {
                             Column(
                                 modifier = Modifier
@@ -285,19 +186,19 @@ fun MyOrdersScreen(
                                         .background(DarkCard),
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    Text(text = "📋", fontSize = 28.sp)
+                                    Text(text = "\uD83D\uDCCB", fontSize = 28.sp)
                                 }
                                 Spacer(modifier = Modifier.height(16.dp))
                                 Text(
                                     text = "Nemate naloge",
                                     fontSize = 17.sp,
                                     fontWeight = FontWeight.Medium,
-                                    color = Color.White,
+                                    color = TextWhite,
                                     textAlign = TextAlign.Center
                                 )
                                 Spacer(modifier = Modifier.height(8.dp))
                                 Text(
-                                    text = "Kada kreirate nalog na berzi, pojaviće se ovde",
+                                    text = "Kada kreirate nalog na berzi, pojavi\u0107e se ovde",
                                     fontSize = 13.sp,
                                     color = TextMuted,
                                     textAlign = TextAlign.Center
@@ -307,7 +208,7 @@ fun MyOrdersScreen(
                     }
                 }
 
-                // ── 6. BOTTOM SPACING ───────────────────────────────────────
+                // -- 6. BOTTOM SPACING -----------------------------------------------
                 item { Spacer(modifier = Modifier.height(90.dp)) }
             }
         }
@@ -325,17 +226,40 @@ private fun OrderCard(order: OrderResponse) {
     val directionColor = if (isBuy) SuccessGreen else ErrorRed
     val directionLabel = if (isBuy) "KUPI" else "PRODAJ"
 
-    val statusColor = statusColor(order.status)
+    val sColor = statusColor(order.status)
     val statusLabel = statusLabel(order.status)
 
-    Box(
+    val filled = order.filledQuantity
+    val isPartial = filled != null && filled > 0 && filled != order.quantity
+
+    // Card with colored left border matching status
+    Row(
         modifier = Modifier
             .fillMaxWidth()
+            .height(IntrinsicSize.Min)
             .clip(RoundedCornerShape(16.dp))
             .background(DarkCard)
-            .padding(16.dp)
     ) {
-        Column {
+        // Status-colored left accent border
+        Box(
+            modifier = Modifier
+                .width(4.dp)
+                .fillMaxHeight()
+                .background(
+                    Brush.linearGradient(
+                        colors = listOf(sColor, sColor.copy(alpha = 0.5f)),
+                        start = Offset(0f, 0f),
+                        end = Offset(0f, Float.POSITIVE_INFINITY)
+                    )
+                )
+        )
+
+        // Card content
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(16.dp)
+        ) {
             // Top row: ticker + direction badge | status badge
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -351,7 +275,7 @@ private fun OrderCard(order: OrderResponse) {
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
                         fontFamily = FontFamily.Monospace,
-                        color = Color.White
+                        color = TextWhite
                     )
                     // Direction badge
                     Box(
@@ -372,14 +296,14 @@ private fun OrderCard(order: OrderResponse) {
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(8.dp))
-                        .background(statusColor.copy(alpha = 0.15f))
+                        .background(sColor.copy(alpha = 0.15f))
                         .padding(horizontal = 10.dp, vertical = 4.dp)
                 ) {
                     Text(
                         text = statusLabel,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Medium,
-                        color = statusColor
+                        color = sColor
                     )
                 }
             }
@@ -398,17 +322,31 @@ private fun OrderCard(order: OrderResponse) {
             // Details row
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 // Quantity
-                val quantityText = buildString {
-                    append("Količina: ${order.quantity}")
-                    val filled = order.filledQuantity
+                Row {
+                    Text(
+                        text = "Koli\u010Dina: ",
+                        fontSize = 13.sp,
+                        color = TextMuted
+                    )
+                    Text(
+                        text = "${order.quantity}",
+                        fontSize = 13.sp,
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.Medium,
+                        color = TextWhite
+                    )
                     if (filled != null && filled != order.quantity) {
-                        append(" (izvršeno: $filled)")
+                        Text(
+                            text = " (izvr\u0161eno: $filled)",
+                            fontSize = 13.sp,
+                            color = TextMuted
+                        )
                     }
                 }
-                Text(text = quantityText, fontSize = 13.sp, color = Color.White)
 
                 // AON badge
                 if (order.allOrNone == true) {
@@ -418,9 +356,45 @@ private fun OrderCard(order: OrderResponse) {
                             .background(DarkCardBorder)
                             .padding(horizontal = 8.dp, vertical = 3.dp)
                     ) {
-                        Text(text = "AON", fontSize = 10.sp, color = TextMuted)
+                        Text(
+                            text = "AON",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = TextMuted
+                        )
                     }
                 }
+            }
+
+            // Progress bar for partially executed orders
+            if (isPartial) {
+                Spacer(modifier = Modifier.height(8.dp))
+                val progress = filled!!.toFloat() / order.quantity.toFloat()
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(6.dp)
+                        .clip(RoundedCornerShape(3.dp))
+                        .background(DarkCardBorder)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(fraction = progress)
+                            .fillMaxHeight()
+                            .clip(RoundedCornerShape(3.dp))
+                            .background(
+                                Brush.horizontalGradient(
+                                    colors = listOf(Indigo500, Violet600)
+                                )
+                            )
+                    )
+                }
+                Text(
+                    text = "${"%.0f".format(progress * 100)}% izvr\u0161eno",
+                    fontSize = 11.sp,
+                    color = Indigo400,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
             }
 
             Spacer(modifier = Modifier.height(4.dp))
@@ -441,7 +415,7 @@ private fun OrderCard(order: OrderResponse) {
             Text(
                 text = priceText,
                 fontSize = 13.sp,
-                color = Color.White,
+                color = TextWhite,
                 fontFamily = FontFamily.Monospace
             )
 
@@ -451,7 +425,8 @@ private fun OrderCard(order: OrderResponse) {
                 Text(
                     text = "Provizija: ${"%.2f".format(fee)}",
                     fontSize = 12.sp,
-                    color = TextMuted
+                    color = TextMuted,
+                    fontFamily = FontFamily.Monospace
                 )
             }
 
@@ -470,28 +445,124 @@ private fun OrderCard(order: OrderResponse) {
 @Composable
 private fun OrderShimmerCard() {
     val infiniteTransition = rememberInfiniteTransition(label = "shimmer")
-    val alpha by infiniteTransition.animateFloat(
-        initialValue = 0.3f, targetValue = 0.7f,
+    val shimmerTranslate by infiniteTransition.animateFloat(
+        initialValue = -300f,
+        targetValue = 900f,
         animationSpec = infiniteRepeatable(
-            animation = tween(800, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse
-        ), label = "shimmer"
+            animation = tween(1200, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "shimmer"
     )
-    Box(
+
+    val shimmerBrush = Brush.linearGradient(
+        colors = listOf(
+            DarkCard.copy(alpha = 0.3f),
+            DarkCard.copy(alpha = 0.6f),
+            DarkCard.copy(alpha = 0.3f)
+        ),
+        start = Offset(shimmerTranslate, 0f),
+        end = Offset(shimmerTranslate + 300f, 0f)
+    )
+
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(100.dp)
+            .height(IntrinsicSize.Min)
             .clip(RoundedCornerShape(16.dp))
-            .background(DarkCard.copy(alpha = alpha))
-    )
+            .background(DarkCard.copy(alpha = 0.4f))
+    ) {
+        // Shimmer left accent
+        Box(
+            modifier = Modifier
+                .width(4.dp)
+                .fillMaxHeight()
+                .background(DarkCardBorder)
+        )
+
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(16.dp)
+        ) {
+            // Top row: ticker placeholder + badge placeholders
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Box(
+                        modifier = Modifier
+                            .width(56.dp)
+                            .height(18.dp)
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(shimmerBrush)
+                    )
+                    Box(
+                        modifier = Modifier
+                            .width(48.dp)
+                            .height(18.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(shimmerBrush)
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .width(64.dp)
+                        .height(18.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(shimmerBrush)
+                )
+            }
+            Spacer(modifier = Modifier.height(10.dp))
+            // Order type placeholder
+            Box(
+                modifier = Modifier
+                    .width(100.dp)
+                    .height(14.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(shimmerBrush)
+            )
+            Spacer(modifier = Modifier.height(10.dp))
+            // Details row placeholder
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Box(
+                    modifier = Modifier
+                        .width(120.dp)
+                        .height(14.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(shimmerBrush)
+                )
+                Box(
+                    modifier = Modifier
+                        .width(80.dp)
+                        .height(14.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(shimmerBrush)
+                )
+            }
+            Spacer(modifier = Modifier.height(10.dp))
+            // Date placeholder
+            Box(
+                modifier = Modifier
+                    .width(140.dp)
+                    .height(14.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(shimmerBrush)
+            )
+        }
+    }
 }
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
+// -- Helpers ------------------------------------------------------------------
 
 private fun statusLabel(status: String): String = when (status.uppercase()) {
-    "PENDING" -> "Na čekanju"
+    "PENDING" -> "Na \u010Dekanju"
     "APPROVED" -> "Odobren"
-    "DONE" -> "Izvršen"
+    "DONE" -> "Izvr\u0161en"
     "DECLINED" -> "Odbijen"
     "CANCELLED" -> "Otkazan"
     else -> status

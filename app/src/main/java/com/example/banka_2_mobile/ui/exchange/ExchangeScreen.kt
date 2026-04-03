@@ -7,6 +7,7 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -24,9 +25,14 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CurrencyExchange
+import androidx.compose.material.icons.filled.Language
+import androidx.compose.material.icons.filled.SwapVert
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.SnackbarHost
@@ -47,6 +53,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -201,7 +209,7 @@ fun ExchangeScreen(
                                 Box(
                                     modifier = Modifier
                                         .width(4.dp)
-                                        .height(20.dp)
+                                        .height(28.dp)
                                         .clip(RoundedCornerShape(2.dp))
                                         .background(
                                             brush = Brush.verticalGradient(
@@ -209,10 +217,17 @@ fun ExchangeScreen(
                                             )
                                         )
                                 )
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Icon(
+                                    imageVector = Icons.Filled.Language,
+                                    contentDescription = null,
+                                    tint = Indigo400,
+                                    modifier = Modifier.size(26.dp)
+                                )
                                 Spacer(modifier = Modifier.width(10.dp))
                                 Text(
                                     text = "Kursna lista",
-                                    fontSize = 22.sp,
+                                    fontSize = 24.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = Color.White
                                 )
@@ -222,59 +237,15 @@ fun ExchangeScreen(
                                 text = "Kursevi valuta prema RSD",
                                 fontSize = 13.sp,
                                 color = TextMuted,
-                                modifier = Modifier.padding(start = 14.dp)
+                                modifier = Modifier.padding(start = 52.dp)
                             )
-                        }
-
-                        // Rate table header
-                        if (rates.isNotEmpty()) {
-                            item {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 8.dp, vertical = 4.dp),
-                                    horizontalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    Text(
-                                        text = "Valuta",
-                                        fontSize = 11.sp,
-                                        color = TextMuted,
-                                        fontWeight = FontWeight.Medium,
-                                        modifier = Modifier.weight(1.2f)
-                                    )
-                                    Text(
-                                        text = "Kupovni",
-                                        fontSize = 11.sp,
-                                        color = TextMuted,
-                                        fontWeight = FontWeight.Medium,
-                                        modifier = Modifier.weight(1f),
-                                        textAlign = TextAlign.End
-                                    )
-                                    Text(
-                                        text = "Srednji",
-                                        fontSize = 11.sp,
-                                        color = TextMuted,
-                                        fontWeight = FontWeight.Medium,
-                                        modifier = Modifier.weight(1f),
-                                        textAlign = TextAlign.End
-                                    )
-                                    Text(
-                                        text = "Prodajni",
-                                        fontSize = 11.sp,
-                                        color = TextMuted,
-                                        fontWeight = FontWeight.Medium,
-                                        modifier = Modifier.weight(1f),
-                                        textAlign = TextAlign.End
-                                    )
-                                }
-                            }
                         }
 
                         if (rates.isEmpty()) {
                             item { EmptyRatesState() }
                         } else {
                             items(rates) { rate ->
-                                RateRow(rate)
+                                RateCard(rate)
                             }
                         }
 
@@ -314,71 +285,140 @@ fun ExchangeScreen(
 }
 
 @Composable
-private fun RateRow(rate: ExchangeRate) {
+private fun RateCard(rate: ExchangeRate) {
     val gradient = currencyBadgeGradient(rate.currency)
 
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(16.dp))
             .background(DarkCard)
-            .padding(horizontal = 16.dp, vertical = 14.dp)
+            .border(
+                width = 1.dp,
+                color = DarkCardBorder,
+                shape = RoundedCornerShape(16.dp)
+            )
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
         ) {
-            // Currency badge + name
+            // Top row: Currency badge + code
             Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.weight(1.2f)
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
             ) {
+                // Currency circle badge
                 Box(
                     modifier = Modifier
-                        .size(36.dp)
-                        .clip(RoundedCornerShape(8.dp))
+                        .size(44.dp)
+                        .clip(CircleShape)
                         .background(brush = Brush.linearGradient(gradient)),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = rate.currency.take(3),
-                        fontSize = 11.sp,
+                        fontSize = 13.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color.White
+                        color = Color.White,
+                        letterSpacing = 0.5.sp
                     )
                 }
-                Spacer(modifier = Modifier.width(10.dp))
-                Text(
-                    text = rate.currency,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = Color.White
-                )
+                Spacer(modifier = Modifier.width(14.dp))
+                Column {
+                    Text(
+                        text = rate.currency,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.White
+                    )
+                    Text(
+                        text = currencyFullName(rate.currency),
+                        fontSize = 12.sp,
+                        color = TextMuted
+                    )
+                }
             }
 
-            Text(
-                text = formatRate(rate.buyRate),
-                fontSize = 13.sp,
-                color = Color.White,
-                modifier = Modifier.weight(1f),
-                textAlign = TextAlign.End
+            Spacer(modifier = Modifier.height(14.dp))
+
+            // Divider line
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(1.dp)
+                    .background(DarkCardBorder.copy(alpha = 0.6f))
             )
-            Text(
-                text = formatRate(rate.middleRate ?: rate.rate),
-                fontSize = 13.sp,
-                color = Indigo400,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.weight(1f),
-                textAlign = TextAlign.End
-            )
-            Text(
-                text = formatRate(rate.sellRate),
-                fontSize = 13.sp,
-                color = Color.White,
-                modifier = Modifier.weight(1f),
-                textAlign = TextAlign.End
-            )
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            // Rate values row
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                // Buy rate
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = "Kupovni",
+                        fontSize = 11.sp,
+                        color = TextMuted,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = formatRate(rate.buyRate),
+                        fontSize = 14.sp,
+                        color = Color.White,
+                        fontWeight = FontWeight.Medium,
+                        fontFamily = FontFamily.Monospace
+                    )
+                }
+
+                // Middle rate (highlighted)
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = "Srednji",
+                        fontSize = 11.sp,
+                        color = Indigo400,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(Indigo500.copy(alpha = 0.15f))
+                            .padding(horizontal = 12.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            text = formatRate(rate.middleRate ?: rate.rate),
+                            fontSize = 15.sp,
+                            color = Indigo400,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = FontFamily.Monospace
+                        )
+                    }
+                }
+
+                // Sell rate
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = "Prodajni",
+                        fontSize = 11.sp,
+                        color = TextMuted,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = formatRate(rate.sellRate),
+                        fontSize = 14.sp,
+                        color = Color.White,
+                        fontWeight = FontWeight.Medium,
+                        fontFamily = FontFamily.Monospace
+                    )
+                }
+            }
         }
     }
 }
@@ -396,137 +436,216 @@ private fun CalculatorSection(
     currencies: List<String>,
     onCalculate: () -> Unit
 ) {
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(DarkCard)
-            .padding(20.dp)
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                modifier = Modifier
-                    .width(4.dp)
-                    .height(18.dp)
-                    .clip(RoundedCornerShape(2.dp))
-                    .background(
-                        brush = Brush.verticalGradient(
-                            colors = listOf(Indigo500, Violet600)
-                        )
+            .border(
+                width = 1.dp,
+                brush = Brush.linearGradient(
+                    colors = listOf(
+                        Indigo500.copy(alpha = 0.5f),
+                        Violet600.copy(alpha = 0.5f)
                     )
+                ),
+                shape = RoundedCornerShape(16.dp)
             )
-            Spacer(modifier = Modifier.width(10.dp))
-            Text(
-                text = "Kalkulator",
-                fontSize = 16.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = Color.White
-            )
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Amount input
-        OutlinedTextField(
-            value = amount,
-            onValueChange = onAmountChange,
-            label = { Text("Iznos") },
-            placeholder = { Text("0.00") },
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = Indigo500,
-                unfocusedBorderColor = DarkCardBorder,
-                focusedLabelColor = Indigo400,
-                unfocusedLabelColor = TextMuted,
-                cursorColor = Indigo500,
-                focusedTextColor = Color.White,
-                unfocusedTextColor = Color.White,
-                focusedPlaceholderColor = TextMuted,
-                unfocusedPlaceholderColor = TextMuted
-            ),
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        // Currency selectors
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            CurrencySelector(
-                label = "Iz",
-                selected = fromCurrency,
-                currencies = currencies,
-                onSelect = onFromChange,
-                modifier = Modifier.weight(1f)
-            )
-
-            Text(
-                text = "\u2192",
-                fontSize = 20.sp,
-                color = Indigo400
-            )
-
-            CurrencySelector(
-                label = "U",
-                selected = toCurrency,
-                currencies = currencies,
-                onSelect = onToChange,
-                modifier = Modifier.weight(1f)
-            )
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Calculate button
-        Box(
+            .background(DarkCard)
+    ) {
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(48.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(
-                    brush = Brush.linearGradient(
-                        colors = listOf(Indigo500, Violet600)
-                    )
-                )
-                .clickable { onCalculate() },
-            contentAlignment = Alignment.Center
+                .padding(20.dp)
         ) {
-            Text(
-                text = if (isCalculating) "Racunam..." else "Izracunaj",
-                fontSize = 15.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = Color.White
-            )
-        }
+            // Header with gradient accent
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .width(4.dp)
+                        .height(22.dp)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(
+                            brush = Brush.verticalGradient(
+                                colors = listOf(Indigo500, Violet600)
+                            )
+                        )
+                )
+                Spacer(modifier = Modifier.width(10.dp))
+                Icon(
+                    imageVector = Icons.Filled.CurrencyExchange,
+                    contentDescription = null,
+                    tint = Indigo400,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Kalkulator",
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color.White
+                )
+            }
 
-        // Result
-        if (result != null) {
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // Amount input - large monospace
+            OutlinedTextField(
+                value = amount,
+                onValueChange = onAmountChange,
+                label = { Text("Iznos") },
+                placeholder = {
+                    Text(
+                        "0.00",
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = 20.sp
+                    )
+                },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                textStyle = TextStyle(
+                    fontFamily = FontFamily.Monospace,
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color.White
+                ),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = Indigo500,
+                    unfocusedBorderColor = DarkCardBorder,
+                    focusedLabelColor = Indigo400,
+                    unfocusedLabelColor = TextMuted,
+                    cursorColor = Indigo500,
+                    focusedTextColor = Color.White,
+                    unfocusedTextColor = Color.White,
+                    focusedPlaceholderColor = TextMuted,
+                    unfocusedPlaceholderColor = TextMuted
+                ),
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.fillMaxWidth()
+            )
+
             Spacer(modifier = Modifier.height(16.dp))
+
+            // Currency selectors with swap icon between them
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                CurrencySelector(
+                    label = "Iz valute",
+                    selected = fromCurrency,
+                    currencies = currencies,
+                    onSelect = onFromChange,
+                    modifier = Modifier.weight(1f)
+                )
+
+                // Swap icon
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .background(
+                            brush = Brush.linearGradient(
+                                colors = listOf(
+                                    Indigo500.copy(alpha = 0.2f),
+                                    Violet600.copy(alpha = 0.2f)
+                                )
+                            )
+                        )
+                        .border(
+                            width = 1.dp,
+                            color = DarkCardBorder,
+                            shape = CircleShape
+                        )
+                        .clickable {
+                            val temp = fromCurrency
+                            onFromChange(toCurrency)
+                            onToChange(temp)
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.SwapVert,
+                        contentDescription = "Zameni valute",
+                        tint = Indigo400,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+
+                CurrencySelector(
+                    label = "U valutu",
+                    selected = toCurrency,
+                    currencies = currencies,
+                    onSelect = onToChange,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // Calculate button - gradient
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(Indigo500.copy(alpha = 0.1f))
-                    .padding(16.dp),
+                    .height(52.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(
+                        brush = Brush.linearGradient(
+                            colors = listOf(Indigo500, Violet600)
+                        )
+                    )
+                    .clickable { onCalculate() },
                 contentAlignment = Alignment.Center
             ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        text = "Rezultat konverzije",
-                        fontSize = 12.sp,
-                        color = TextMuted
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = result,
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Indigo400
-                    )
+                Text(
+                    text = if (isCalculating) "Racunam..." else "Izracunaj",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                    letterSpacing = 0.5.sp
+                )
+            }
+
+            // Result
+            if (result != null) {
+                Spacer(modifier = Modifier.height(20.dp))
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(
+                            brush = Brush.linearGradient(
+                                colors = listOf(
+                                    Indigo500.copy(alpha = 0.08f),
+                                    Violet600.copy(alpha = 0.12f)
+                                )
+                            )
+                        )
+                        .border(
+                            width = 1.dp,
+                            color = Indigo500.copy(alpha = 0.2f),
+                            shape = RoundedCornerShape(16.dp)
+                        )
+                        .padding(20.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = "Rezultat konverzije",
+                            fontSize = 12.sp,
+                            color = TextMuted,
+                            letterSpacing = 1.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = result,
+                            fontSize = 28.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Indigo400,
+                            fontFamily = FontFamily.Monospace
+                        )
+                    }
                 }
             }
         }
@@ -548,22 +667,50 @@ private fun CurrencySelector(
             text = label,
             fontSize = 11.sp,
             color = TextMuted,
-            modifier = Modifier.padding(bottom = 4.dp)
+            fontWeight = FontWeight.Medium,
+            modifier = Modifier.padding(bottom = 6.dp)
         )
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(10.dp))
+                .clip(RoundedCornerShape(12.dp))
                 .background(DarkBg)
+                .border(
+                    width = 1.dp,
+                    color = DarkCardBorder,
+                    shape = RoundedCornerShape(12.dp)
+                )
                 .clickable { expanded = true }
-                .padding(horizontal = 14.dp, vertical = 12.dp)
+                .padding(horizontal = 14.dp, vertical = 14.dp)
         ) {
-            Text(
-                text = selected,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Medium,
-                color = Color.White
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                // Small currency circle badge
+                Box(
+                    modifier = Modifier
+                        .size(24.dp)
+                        .clip(CircleShape)
+                        .background(
+                            brush = Brush.linearGradient(
+                                currencyBadgeGradient(selected)
+                            )
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = selected.take(2),
+                        fontSize = 8.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = selected,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color.White
+                )
+            }
         }
         DropdownMenu(
             expanded = expanded,
@@ -573,11 +720,32 @@ private fun CurrencySelector(
             currencies.distinct().forEach { currency ->
                 DropdownMenuItem(
                     text = {
-                        Text(
-                            text = currency,
-                            color = if (currency == selected) Indigo400 else Color.White,
-                            fontWeight = if (currency == selected) FontWeight.Bold else FontWeight.Normal
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(20.dp)
+                                    .clip(CircleShape)
+                                    .background(
+                                        brush = Brush.linearGradient(
+                                            currencyBadgeGradient(currency)
+                                        )
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = currency.take(2),
+                                    fontSize = 7.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Text(
+                                text = currency,
+                                color = if (currency == selected) Indigo400 else Color.White,
+                                fontWeight = if (currency == selected) FontWeight.Bold else FontWeight.Normal
+                            )
+                        }
                     },
                     onClick = {
                         onSelect(currency)
@@ -594,29 +762,46 @@ private fun EmptyRatesState() {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 40.dp),
+            .padding(vertical = 60.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Box(
             modifier = Modifier
-                .size(64.dp)
+                .size(80.dp)
                 .clip(CircleShape)
-                .background(DarkCard),
+                .background(
+                    brush = Brush.linearGradient(
+                        colors = listOf(
+                            Indigo500.copy(alpha = 0.15f),
+                            Violet600.copy(alpha = 0.15f)
+                        )
+                    )
+                )
+                .border(
+                    width = 1.dp,
+                    color = DarkCardBorder,
+                    shape = CircleShape
+                ),
             contentAlignment = Alignment.Center
         ) {
-            Text(text = "\uD83D\uDCB1", fontSize = 28.sp)
+            Icon(
+                imageVector = Icons.Filled.CurrencyExchange,
+                contentDescription = null,
+                tint = Indigo400,
+                modifier = Modifier.size(36.dp)
+            )
         }
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(20.dp))
         Text(
             text = "Nema kursne liste",
-            fontSize = 17.sp,
-            fontWeight = FontWeight.Medium,
+            fontSize = 18.sp,
+            fontWeight = FontWeight.SemiBold,
             color = Color.White
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
             text = "Kursna lista trenutno nije dostupna",
-            fontSize = 13.sp,
+            fontSize = 14.sp,
             color = TextMuted,
             textAlign = TextAlign.Center
         )
@@ -625,30 +810,149 @@ private fun EmptyRatesState() {
 
 @Composable
 private fun LoadingShimmer() {
+    val infiniteTransition = rememberInfiniteTransition(label = "shimmer")
+    val shimmerAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.3f,
+        targetValue = 0.7f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(800, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "shimmerAlpha"
+    )
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(horizontal = 20.dp, vertical = 16.dp)
     ) {
+        // Header shimmer
         Spacer(modifier = Modifier.height(16.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier
+                    .width(4.dp)
+                    .height(28.dp)
+                    .clip(RoundedCornerShape(2.dp))
+                    .alpha(shimmerAlpha)
+                    .background(DarkCardBorder)
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Box(
+                modifier = Modifier
+                    .size(26.dp)
+                    .clip(CircleShape)
+                    .alpha(shimmerAlpha)
+                    .background(DarkCard)
+            )
+            Spacer(modifier = Modifier.width(10.dp))
+            Box(
+                modifier = Modifier
+                    .width(140.dp)
+                    .height(24.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .alpha(shimmerAlpha)
+                    .background(DarkCard)
+            )
+        }
+        Spacer(modifier = Modifier.height(8.dp))
         Box(
             modifier = Modifier
-                .width(140.dp)
-                .height(24.dp)
+                .padding(start = 52.dp)
+                .width(160.dp)
+                .height(14.dp)
                 .clip(RoundedCornerShape(4.dp))
+                .alpha(shimmerAlpha)
                 .background(DarkCard)
         )
+
         Spacer(modifier = Modifier.height(24.dp))
-        repeat(5) {
+
+        // Rate card shimmers
+        repeat(4) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(60.dp)
-                    .clip(RoundedCornerShape(12.dp))
+                    .clip(RoundedCornerShape(16.dp))
+                    .alpha(shimmerAlpha)
                     .background(DarkCard)
-            )
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp)
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(44.dp)
+                                .clip(CircleShape)
+                                .background(DarkCardBorder)
+                        )
+                        Spacer(modifier = Modifier.width(14.dp))
+                        Column {
+                            Box(
+                                modifier = Modifier
+                                    .width(50.dp)
+                                    .height(16.dp)
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .background(DarkCardBorder)
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Box(
+                                modifier = Modifier
+                                    .width(80.dp)
+                                    .height(12.dp)
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .background(DarkCardBorder)
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(14.dp))
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(1.dp)
+                            .background(DarkCardBorder.copy(alpha = 0.4f))
+                    )
+                    Spacer(modifier = Modifier.height(14.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        repeat(3) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Box(
+                                    modifier = Modifier
+                                        .width(48.dp)
+                                        .height(10.dp)
+                                        .clip(RoundedCornerShape(4.dp))
+                                        .background(DarkCardBorder)
+                                )
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Box(
+                                    modifier = Modifier
+                                        .width(60.dp)
+                                        .height(14.dp)
+                                        .clip(RoundedCornerShape(4.dp))
+                                        .background(DarkCardBorder)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
             Spacer(modifier = Modifier.height(12.dp))
         }
+
+        // Calculator shimmer
+        Spacer(modifier = Modifier.height(8.dp))
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(200.dp)
+                .clip(RoundedCornerShape(16.dp))
+                .alpha(shimmerAlpha)
+                .background(DarkCard)
+        )
     }
 }
 
@@ -672,6 +976,32 @@ private fun currencyBadgeGradient(currency: String): List<Color> {
         "CAD" -> listOf(Color(0xFFEC4899), Color(0xFFDB2777))
         "AUD" -> listOf(Color(0xFF14B8A6), Color(0xFF0D9488))
         "SEK", "NOK", "DKK" -> listOf(Color(0xFF3B82F6), Color(0xFF1D4ED8))
+        "RSD" -> listOf(Color(0xFF6366F1), Color(0xFF4338CA))
         else -> listOf(Color(0xFF6B7280), Color(0xFF4B5563))
+    }
+}
+
+private fun currencyFullName(currency: String): String {
+    return when (currency.uppercase()) {
+        "EUR" -> "Evro"
+        "USD" -> "Americki dolar"
+        "CHF" -> "Svajcarski franak"
+        "GBP" -> "Britanska funta"
+        "JPY" -> "Japanski jen"
+        "CAD" -> "Kanadski dolar"
+        "AUD" -> "Australijski dolar"
+        "SEK" -> "Svedska kruna"
+        "NOK" -> "Norveska kruna"
+        "DKK" -> "Danska kruna"
+        "RSD" -> "Srpski dinar"
+        "HUF" -> "Madjarska forinta"
+        "CZK" -> "Ceska kruna"
+        "PLN" -> "Poljski zlot"
+        "BAM" -> "Konvertibilna marka"
+        "HRK" -> "Hrvatska kuna"
+        "TRY" -> "Turska lira"
+        "RUB" -> "Ruska rublja"
+        "CNY" -> "Kineski juan"
+        else -> currency
     }
 }
