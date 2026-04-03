@@ -3,22 +3,28 @@ package com.example.banka_2_mobile.ui.theme
 import androidx.compose.ui.graphics.Color
 
 // Indigo-Violet banking palette (matching web app)
-val Indigo500 = Color(0xFF6366F1)
-val Indigo600 = Color(0xFF4F46E5)
 val Indigo700 = Color(0xFF4338CA)
+val Indigo600 = Color(0xFF4F46E5)
+val Indigo500 = Color(0xFF6366F1)
 val Indigo400 = Color(0xFF818CF8)
 val Indigo300 = Color(0xFFA5B4FC)
+val Indigo200 = Color(0xFFC7D2FE)
+val Indigo100 = Color(0xFFE0E7FF)
 
+val Violet700 = Color(0xFF6D28D9)
 val Violet600 = Color(0xFF7C3AED)
 val Violet500 = Color(0xFF8B5CF6)
 val Violet400 = Color(0xFFA78BFA)
-val Violet700 = Color(0xFF6D28D9)
+val Violet300 = Color(0xFFC4B5FD)
+val Violet200 = Color(0xFFDDD6FE)
 
 // Dark theme backgrounds
 val DarkBg = Color(0xFF070B24)
 val DarkSurface = Color(0xFF0A0F2E)
 val DarkCard = Color(0xFF0D1240)
+val DarkCardElevated = Color(0xFF111847)
 val DarkCardBorder = Color(0xFF1E2563)
+val DarkBorder = Color(0xFF252B63)
 
 // Light theme
 val LightBg = Color(0xFFF8FAFC)       // slate-50
@@ -28,6 +34,21 @@ val LightSurface = Color(0xFFFFFFFF)
 val SuccessGreen = Color(0xFF22C55E)
 val WarningYellow = Color(0xFFEAB308)
 val ErrorRed = Color(0xFFEF4444)
+
+// Semantic accents
+val Emerald500 = Color(0xFF10B981)
+val Emerald400 = Color(0xFF34D399)
+val Amber500 = Color(0xFFF59E0B)
+val Amber400 = Color(0xFFFBBF24)
+val Rose500 = Color(0xFFF43F5E)
+
+// Glassmorphism
+val GlassWhite = Color(0x15FFFFFF)
+val GlassWhite2 = Color(0x25FFFFFF)
+
+// Chart colors
+val ChartGreen = Color(0xFF34D399)
+val ChartRed = Color(0xFFF87171)
 
 // Text
 val TextWhite = Color(0xFFFFFFFF)

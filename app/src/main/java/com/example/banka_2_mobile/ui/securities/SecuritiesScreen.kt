@@ -1,5 +1,6 @@
 package com.example.banka_2_mobile.ui.securities
 
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -7,12 +8,16 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -24,17 +29,17 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.ArrowDropUp
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.ShowChart
+import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
-import androidx.compose.material3.TabRowDefaults
-import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
@@ -64,183 +69,18 @@ import com.example.banka_2_mobile.data.repository.AuthRepository
 import com.example.banka_2_mobile.ui.theme.DarkBg
 import com.example.banka_2_mobile.ui.theme.DarkCard
 import com.example.banka_2_mobile.ui.theme.DarkCardBorder
+import com.example.banka_2_mobile.ui.theme.DarkCardElevated
 import com.example.banka_2_mobile.ui.theme.ErrorRed
+import com.example.banka_2_mobile.ui.theme.Indigo400
 import com.example.banka_2_mobile.ui.theme.Indigo500
 import com.example.banka_2_mobile.ui.theme.SuccessGreen
-import com.example.banka_2_mobile.ui.theme.ErrorRed
 import com.example.banka_2_mobile.ui.theme.TextMuted
 import com.example.banka_2_mobile.ui.theme.Violet600
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 // ══════════════════════════════════════════════════════════════════════════════
-// TODO: SecuritiesScreen — Berza listing screen for Android
-// ══════════════════════════════════════════════════════════════════════════════
-//
-// OVERVIEW:
-//   Main securities listing screen (Celina 3). Shows stocks and futures
-//   available on the exchange. Clients cannot see Forex (per spec).
-//
-// ──────────────────────────────────────────────────────────────────────────────
-// UI LAYOUT (top to bottom):
-// ──────────────────────────────────────────────────────────────────────────────
-//
-//   1. PAGE HEADER
-//      - Row with gradient accent bar (w=4.dp, h=20.dp, Indigo500->Violet600)
-//      - Title: "Berza" (17.sp, SemiBold, White) — same pattern as HomeScreen
-//
-//   2. TAB ROW (two tabs)
-//      - Tab 0: "Akcije" (STOCK)
-//      - Tab 1: "Futures" (FUTURES)
-//      - Use TabRow with indicator = Indigo500 gradient underline
-//      - Background: DarkCard, selected text: White, unselected: TextMuted
-//      - On tab change: reset searchQuery, set activeTab, re-fetch listings
-//
-//   3. SEARCH BAR
-//      - OutlinedTextField with Search icon (leadingIcon)
-//      - Placeholder: "Pretrazite hartije od vrednosti..."
-//      - Colors: containerColor = DarkCard, text = White, border = DarkCardBorder
-//      - focused border = Indigo500
-//      - Debounce search input by 300ms before triggering API call
-//      - RoundedCornerShape(12.dp)
-//
-//   4. LISTINGS LIST (LazyColumn)
-//      Each item is a Row inside a DarkCard rounded box (16.dp corners):
-//
-//      ┌─────────────────────────────────────────────────┐
-//      │ ▌ AAPL          Apple Inc.           $182.63   │
-//      │ ▌ STOCK         NASDAQ               +1.25%   │
-//      │                                      Vol: 52M  │
-//      └─────────────────────────────────────────────────┘
-//
-//      - Left colored border: 4.dp wide vertical bar
-//        * SuccessGreen (#22C55E) if changePercent >= 0
-//        * ErrorRed (#EF4444) if changePercent < 0
-//      - Ticker: 16.sp, Bold, FontFamily.Monospace, Color.White
-//      - Name: 13.sp, TextMuted, maxLines = 1, ellipsis
-//      - Type badge: tiny pill (listingType text), bg = DarkCardBorder
-//      - Exchange badge: tiny pill (exchangeAcronym), bg = DarkCardBorder
-//      - Price: 18.sp, Bold, FontFamily.Monospace, Color.White, right-aligned
-//      - Change: 13.sp, FontFamily.Monospace
-//        * Green text + "+" prefix if positive, Red text if negative
-//        * Format: "+2.35%" or "-1.12%"
-//      - Volume: 11.sp, TextMuted, right-aligned
-//        * Abbreviate: 1,234,567 -> "1.23M", 500,000 -> "500K"
-//      - On click: navigate to SecurityDetailScreen with listing.id
-//      - Spacing between items: 12.dp
-//
-//   5. LOADING STATE
-//      - Show shimmer placeholders (3-4 skeleton cards), same pattern as
-//        HomeScreen LoadingShimmer. Each card: fillMaxWidth, h=80.dp,
-//        RoundedCornerShape(16.dp), bg = DarkCard
-//
-//   6. EMPTY STATE
-//      - Icon: magnifying glass emoji or search icon in a CircleShape bg=DarkCard
-//      - Title: "Nema rezultata" (17.sp, Medium, White)
-//      - Subtitle: "Pokusajte drugu pretragu" (13.sp, TextMuted)
-//      - Same layout pattern as HomeScreen EmptyAccountsState
-//
-//   7. ERROR STATE
-//      - Show Snackbar via SnackbarHostState (same as HomeScreen pattern)
-//      - On 401: clear tokens + onLogout()
-//
-//   8. PULL-TO-REFRESH
-//      - Wrap content in PullToRefreshBox (same as HomeScreen)
-//      - On refresh: re-fetch with current activeTab + searchQuery
-//
-//   9. BOTTOM SPACING
-//      - Spacer(height = 90.dp) at end of LazyColumn for BottomNavBar clearance
-//
-// ──────────────────────────────────────────────────────────────────────────────
-// STATE VARIABLES:
-// ──────────────────────────────────────────────────────────────────────────────
-//
-//   var listings by remember { mutableStateOf<List<Listing>>(emptyList()) }
-//   var activeTab by remember { mutableIntStateOf(0) }  // 0 = STOCK, 1 = FUTURES
-//   var searchQuery by remember { mutableStateOf("") }
-//   var isLoading by remember { mutableStateOf(true) }
-//   var isRefreshing by remember { mutableStateOf(false) }
-//   var errorMessage by remember { mutableStateOf<String?>(null) }
-//   var totalPages by remember { mutableIntStateOf(0) }
-//   var currentPage by remember { mutableIntStateOf(0) }
-//
-//   // Derive listing type from tab index:
-//   val listingType = if (activeTab == 0) "STOCK" else "FUTURES"
-//
-// ──────────────────────────────────────────────────────────────────────────────
-// API CALLS:
-// ──────────────────────────────────────────────────────────────────────────────
-//
-//   suspend fun fetchListings() {
-//       try {
-//           val response = RetrofitClient.api.getListings(
-//               type = listingType,
-//               search = searchQuery,
-//               page = currentPage,
-//               size = 20
-//           )
-//           if (response.isSuccessful) {
-//               val body = response.body()
-//               listings = body?.content ?: emptyList()
-//               totalPages = body?.totalPages ?: 0
-//           } else if (response.code() == 401) {
-//               authRepository.clearTokens()
-//               onLogout()
-//               return
-//           } else {
-//               errorMessage = "Greska pri ucitavanju berze (${response.code()})"
-//           }
-//       } catch (e: Exception) {
-//           errorMessage = "Greska u mrezi. Proverite konekciju."
-//       }
-//       isLoading = false
-//       isRefreshing = false
-//   }
-//
-//   - LaunchedEffect(activeTab, searchQuery) triggers fetchListings()
-//   - Pull-to-refresh also calls fetchListings()
-//
-// ──────────────────────────────────────────────────────────────────────────────
-// NAVIGATION:
-// ──────────────────────────────────────────────────────────────────────────────
-//
-//   - Receives: onLogout: () -> Unit, onListingClick: (Long) -> Unit
-//   - On listing item click: onListingClick(listing.id) -> NavGraph navigates
-//     to "securities/{id}" route
-//
-// ──────────────────────────────────────────────────────────────────────────────
-// DESIGN TOKENS:
-// ──────────────────────────────────────────────────────────────────────────────
-//
-//   - Background: DarkBg (#070B24)
-//   - Card: DarkCard (#0D1240)
-//   - Card border: DarkCardBorder (#1E2563)
-//   - Primary accent: Indigo500 (#6366F1) -> Violet600 (#7C3AED)
-//   - Positive: SuccessGreen (#22C55E)
-//   - Negative: ErrorRed (#EF4444)
-//   - Muted text: TextMuted (#94A3B8)
-//   - Monospace font for: ticker, price, change percentage
-//
-// ──────────────────────────────────────────────────────────────────────────────
-// HELPER FUNCTIONS NEEDED:
-// ──────────────────────────────────────────────────────────────────────────────
-//
-//   private fun formatVolume(volume: Long?): String
-//       // null -> "-"
-//       // >= 1_000_000_000 -> "X.XXB"
-//       // >= 1_000_000 -> "X.XXM"
-//       // >= 1_000 -> "X.XXK"
-//       // else -> volume.toString()
-//
-//   private fun formatChangePercent(percent: Double?): String
-//       // null -> "0.00%"
-//       // positive -> "+X.XX%"
-//       // negative -> "-X.XX%" (minus is natural)
-//
-//   private fun formatPrice(price: Double): String
-//       // Use NumberFormat with 2 decimal places, Locale("sr", "RS")
-//       // Append no currency (raw price)
-//
+// SecuritiesScreen — Premium Fintech Berza Listing
 // ══════════════════════════════════════════════════════════════════════════════
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -249,17 +89,6 @@ fun SecuritiesScreen(
     onLogout: () -> Unit,
     onListingClick: (Long) -> Unit
 ) {
-    // TODO: Implement the full screen following the layout described above.
-    //       Use HomeScreen.kt as the reference for:
-    //       - Background orb animation pattern
-    //       - PullToRefreshBox wrapping
-    //       - LazyColumn with spacing
-    //       - SnackbarHost for errors
-    //       - LoadingShimmer composable
-    //       - EmptyState composable
-    //       - 401 handling with onLogout()
-
-    ///////////////
     val context = LocalContext.current
     val authRepository = remember { AuthRepository(context) }
     val scope = rememberCoroutineScope()
@@ -301,10 +130,10 @@ fun SecuritiesScreen(
                 onLogout()
                 return
             } else {
-                errorMessage = "Greška pri učitavanju berze (${response.code()})"
+                errorMessage = "Greska pri ucitavanju berze (${response.code()})"
             }
         } catch (e: Exception) {
-            errorMessage = "Greška u mreži. Proverite konekciju."
+            errorMessage = "Greska u mrezi. Proverite konekciju."
         }
         isLoading = false
         isRefreshing = false
@@ -322,20 +151,16 @@ fun SecuritiesScreen(
         }
     }
 
-    ///////////////
+    // Derived market overview stats
+    val totalListings = listings.size
+    val bestPerformer = listings.maxByOrNull { it.changePercent ?: Double.MIN_VALUE }
+    val totalVolume = listings.sumOf { it.volume ?: 0L }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(DarkBg),
-        contentAlignment = Alignment.Center
+            .background(DarkBg)
     ) {
-        /*Text(
-            text = "Berza - TODO",
-            color = Color.White,
-            fontSize = 20.sp
-        )*/
-
         PullToRefreshBox(
             isRefreshing = isRefreshing,
             onRefresh = {
@@ -348,14 +173,20 @@ fun SecuritiesScreen(
                     .fillMaxSize()
                     .padding(horizontal = 20.dp)
             ) {
-                // ── 1. HEADER ───────────────────────────────────────────────
+                // ══════════════════════════════════════════════════════════════
+                // 1. HEADER — "Berza" with TrendingUp icon + gradient bar
+                // ══════════════════════════════════════════════════════════════
                 item {
                     Spacer(modifier = Modifier.height(20.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        // Gradient accent bar
                         Box(
                             modifier = Modifier
                                 .width(4.dp)
-                                .height(20.dp)
+                                .height(28.dp)
                                 .clip(RoundedCornerShape(2.dp))
                                 .background(
                                     Brush.linearGradient(
@@ -365,67 +196,68 @@ fun SecuritiesScreen(
                                     )
                                 )
                         )
+                        Spacer(modifier = Modifier.width(12.dp))
+
+                        // Icon with gradient background circle
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(CircleShape)
+                                .background(
+                                    Brush.linearGradient(
+                                        colors = listOf(
+                                            Indigo500.copy(alpha = 0.2f),
+                                            Violet600.copy(alpha = 0.2f)
+                                        )
+                                    )
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.TrendingUp,
+                                contentDescription = null,
+                                tint = Indigo400,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
                         Spacer(modifier = Modifier.width(10.dp))
-                        Text(
-                            text = "Berza",
-                            fontSize = 17.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = Color.White
-                        )
+
+                        Column {
+                            Text(
+                                text = "Berza",
+                                fontSize = 22.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                            Text(
+                                text = "Trgovanje hartijama od vrednosti",
+                                fontSize = 12.sp,
+                                color = TextMuted
+                            )
+                        }
                     }
+                    Spacer(modifier = Modifier.height(20.dp))
+                }
+
+                // ══════════════════════════════════════════════════════════════
+                // 2. PILL TAB SELECTOR with animated slide indicator
+                // ══════════════════════════════════════════════════════════════
+                item {
+                    PillTabSelector(
+                        tabs = tabs,
+                        activeTab = activeTab,
+                        onTabSelected = { index ->
+                            activeTab = index
+                            searchQuery = ""
+                            currentPage = 0
+                        }
+                    )
                     Spacer(modifier = Modifier.height(16.dp))
                 }
 
-                // ── 2. TAB ROW ──────────────────────────────────────────────
-                item {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(DarkCard)
-                    ) {
-                        TabRow(
-                            selectedTabIndex = activeTab,
-                            containerColor = Color.Transparent,
-                            contentColor = Color.White,
-                            indicator = { tabPositions ->
-                                Box(
-                                    modifier = Modifier
-                                        .tabIndicatorOffset(tabPositions[activeTab])
-                                        .height(2.dp)
-                                        .background(
-                                            Brush.linearGradient(
-                                                colors = listOf(Indigo500, Violet600)
-                                            )
-                                        )
-                                )
-                            },
-                            divider = {}
-                        ) {
-                            tabs.forEachIndexed { index, title ->
-                                Tab(
-                                    selected = activeTab == index,
-                                    onClick = {
-                                        activeTab = index
-                                        searchQuery = ""
-                                        currentPage = 0
-                                    },
-                                    text = {
-                                        Text(
-                                            text = title,
-                                            fontSize = 14.sp,
-                                            fontWeight = if (activeTab == index) FontWeight.SemiBold else FontWeight.Normal,
-                                            color = if (activeTab == index) Color.White else TextMuted
-                                        )
-                                    }
-                                )
-                            }
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(12.dp))
-                }
-
-                // ── 3. SEARCH BAR ───────────────────────────────────────────
+                // ══════════════════════════════════════════════════════════════
+                // 3. SEARCH BAR — pill shaped, semi-transparent
+                // ══════════════════════════════════════════════════════════════
                 item {
                     OutlinedTextField(
                         value = searchQuery,
@@ -433,8 +265,8 @@ fun SecuritiesScreen(
                         modifier = Modifier.fillMaxWidth(),
                         placeholder = {
                             Text(
-                                text = "Pretražite hartije od vrednosti...",
-                                color = TextMuted,
+                                text = "Pretrazi hartije...",
+                                color = TextMuted.copy(alpha = 0.7f),
                                 fontSize = 14.sp
                             )
                         },
@@ -442,44 +274,103 @@ fun SecuritiesScreen(
                             Icon(
                                 imageVector = Icons.Filled.Search,
                                 contentDescription = null,
-                                tint = TextMuted
+                                tint = Indigo400,
+                                modifier = Modifier.size(20.dp)
                             )
                         },
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedContainerColor = DarkCard,
-                            unfocusedContainerColor = DarkCard,
+                            focusedContainerColor = DarkCard.copy(alpha = 0.8f),
+                            unfocusedContainerColor = DarkCard.copy(alpha = 0.6f),
                             focusedTextColor = Color.White,
                             unfocusedTextColor = Color.White,
-                            focusedBorderColor = Indigo500,
-                            unfocusedBorderColor = DarkCardBorder,
+                            focusedBorderColor = Indigo500.copy(alpha = 0.6f),
+                            unfocusedBorderColor = DarkCardBorder.copy(alpha = 0.5f),
                             cursorColor = Indigo500
                         ),
-                        shape = RoundedCornerShape(12.dp),
+                        shape = RoundedCornerShape(24.dp),
                         singleLine = true
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                 }
 
-                // ── 5. LOADING STATE ────────────────────────────────────────
+                // ══════════════════════════════════════════════════════════════
+                // 4. MARKET OVERVIEW — 3 mini stat cards
+                // ══════════════════════════════════════════════════════════════
+                if (!isLoading && listings.isNotEmpty()) {
+                    item {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            MarketStatCard(
+                                label = "Ukupno",
+                                value = totalListings.toString(),
+                                icon = Icons.Filled.ShowChart,
+                                accentColor = Indigo500,
+                                modifier = Modifier.weight(1f)
+                            )
+                            MarketStatCard(
+                                label = "Najbolji",
+                                value = bestPerformer?.ticker ?: "-",
+                                subValue = bestPerformer?.let { formatChangePercent(it.changePercent) },
+                                subColor = if ((bestPerformer?.changePercent ?: 0.0) >= 0) SuccessGreen else ErrorRed,
+                                icon = Icons.Filled.TrendingUp,
+                                accentColor = SuccessGreen,
+                                modifier = Modifier.weight(1f)
+                            )
+                            MarketStatCard(
+                                label = "Volumen",
+                                value = formatVolume(totalVolume),
+                                icon = Icons.Filled.ShowChart,
+                                accentColor = Violet600,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(20.dp))
+                    }
+                }
+
+                // ══════════════════════════════════════════════════════════════
+                // 5. LOADING — shimmer skeleton cards
+                // ══════════════════════════════════════════════════════════════
                 if (isLoading) {
+                    // Shimmer stat cards row
+                    item {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            repeat(3) {
+                                ShimmerBox(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .height(80.dp),
+                                    cornerRadius = 16
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(20.dp))
+                    }
                     items(4) {
                         ListingShimmerCard()
                         Spacer(modifier = Modifier.height(12.dp))
                     }
                 }
 
-                // ── 4. LISTINGS LIST ────────────────────────────────────────
+                // ══════════════════════════════════════════════════════════════
+                // 6. SECURITIES LIST — premium cards
+                // ══════════════════════════════════════════════════════════════
                 if (!isLoading) {
                     if (listings.isNotEmpty()) {
                         items(listings) { listing ->
-                            ListingCard(
+                            PremiumListingCard(
                                 listing = listing,
                                 onClick = { onListingClick(listing.id) }
                             )
                             Spacer(modifier = Modifier.height(12.dp))
                         }
                     } else {
-                        // ── 6. EMPTY STATE ──────────────────────────────────
+                        // ── 7. EMPTY STATE ──────────────────────────────────
                         item {
                             Column(
                                 modifier = Modifier
@@ -487,28 +378,51 @@ fun SecuritiesScreen(
                                     .padding(top = 60.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {
+                                // Magnifying glass icon in gradient circle
                                 Box(
                                     modifier = Modifier
-                                        .size(64.dp)
+                                        .size(72.dp)
                                         .clip(CircleShape)
-                                        .background(DarkCard),
+                                        .background(
+                                            Brush.linearGradient(
+                                                colors = listOf(
+                                                    DarkCard,
+                                                    DarkCardElevated
+                                                )
+                                            )
+                                        )
+                                        .border(
+                                            width = 1.dp,
+                                            brush = Brush.linearGradient(
+                                                colors = listOf(
+                                                    DarkCardBorder.copy(alpha = 0.6f),
+                                                    DarkCardBorder.copy(alpha = 0.2f)
+                                                )
+                                            ),
+                                            shape = CircleShape
+                                        ),
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    Text(text = "🔍", fontSize = 28.sp)
+                                    Icon(
+                                        imageVector = Icons.Filled.Search,
+                                        contentDescription = null,
+                                        tint = TextMuted.copy(alpha = 0.6f),
+                                        modifier = Modifier.size(32.dp)
+                                    )
                                 }
-                                Spacer(modifier = Modifier.height(16.dp))
+                                Spacer(modifier = Modifier.height(20.dp))
                                 Text(
-                                    text = "Nema rezultata",
+                                    text = "Nema rezultata za pretragu",
                                     fontSize = 17.sp,
-                                    fontWeight = FontWeight.Medium,
+                                    fontWeight = FontWeight.SemiBold,
                                     color = Color.White,
                                     textAlign = TextAlign.Center
                                 )
                                 Spacer(modifier = Modifier.height(8.dp))
                                 Text(
-                                    text = "Pokušajte drugu pretragu",
+                                    text = "Pokusajte sa drugim pojmom pretrage",
                                     fontSize = 13.sp,
-                                    color = TextMuted,
+                                    color = TextMuted.copy(alpha = 0.7f),
                                     textAlign = TextAlign.Center
                                 )
                             }
@@ -516,9 +430,8 @@ fun SecuritiesScreen(
                     }
                 }
 
-                // ── 9. BOTTOM SPACING ───────────────────────────────────────
+                // ── BOTTOM SPACING ──────────────────────────────────────────
                 item { Spacer(modifier = Modifier.height(90.dp)) }
-
             }
         }
 
@@ -530,116 +443,538 @@ fun SecuritiesScreen(
 }
 
 
-@Composable
-private fun ListingCard(listing: Listing, onClick: () -> Unit) {
-    val changePercent = listing.changePercent ?: 0.0
-    val isPositive = changePercent >= 0
-    val changeColor = if (isPositive) SuccessGreen else ErrorRed
+// ══════════════════════════════════════════════════════════════════════════════
+// Pill Tab Selector — animated pill-shaped tabs with gradient active indicator
+// ══════════════════════════════════════════════════════════════════════════════
 
-    Row(
+@Composable
+private fun PillTabSelector(
+    tabs: List<String>,
+    activeTab: Int,
+    onTabSelected: (Int) -> Unit
+) {
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
+            .height(48.dp)
+            .clip(RoundedCornerShape(24.dp))
             .background(DarkCard)
-            .clickable { onClick() }
+            .border(
+                width = 1.dp,
+                color = DarkCardBorder.copy(alpha = 0.5f),
+                shape = RoundedCornerShape(24.dp)
+            )
     ) {
-        // Left colored border
-        Box(
-            modifier = Modifier
-                .width(4.dp)
-                .height(80.dp)
-                .background(changeColor)
-        )
-
         Row(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 12.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+                .fillMaxSize()
+                .padding(4.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly
         ) {
-            // Left: ticker, name, badges
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = listing.ticker,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
-                    fontFamily = FontFamily.Monospace,
-                    color = Color.White
+            tabs.forEachIndexed { index, title ->
+                val isSelected = activeTab == index
+                val textColor by animateColorAsState(
+                    targetValue = if (isSelected) Color.White else TextMuted,
+                    animationSpec = tween(200),
+                    label = "tabTextColor$index"
                 )
-                Text(
-                    text = listing.name,
-                    fontSize = 13.sp,
-                    color = TextMuted,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    SmallBadge(text = listing.listingType)
-                    listing.exchangeAcronym?.let { SmallBadge(text = it) }
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .clip(RoundedCornerShape(20.dp))
+                        .then(
+                            if (isSelected) {
+                                Modifier.background(
+                                    Brush.linearGradient(
+                                        colors = listOf(Indigo500, Violet600)
+                                    )
+                                )
+                            } else {
+                                Modifier
+                            }
+                        )
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null
+                        ) { onTabSelected(index) },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = title,
+                        fontSize = 14.sp,
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                        color = textColor
+                    )
                 }
             }
+        }
+    }
+}
 
-            Spacer(modifier = Modifier.width(12.dp))
 
-            // Right: price, change, volume
-            Column(horizontalAlignment = Alignment.End) {
-                Text(
-                    text = formatPrice(listing.price),
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    fontFamily = FontFamily.Monospace,
-                    color = Color.White
+// ══════════════════════════════════════════════════════════════════════════════
+// Market Stat Card — mini overview card
+// ══════════════════════════════════════════════════════════════════════════════
+
+@Composable
+private fun MarketStatCard(
+    label: String,
+    value: String,
+    subValue: String? = null,
+    subColor: Color = TextMuted,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    accentColor: Color,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(16.dp))
+            .background(DarkCard)
+            .border(
+                width = 1.dp,
+                color = DarkCardBorder.copy(alpha = 0.4f),
+                shape = RoundedCornerShape(16.dp)
+            )
+            .padding(12.dp)
+    ) {
+        Column {
+            // Icon row
+            Box(
+                modifier = Modifier
+                    .size(28.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(accentColor.copy(alpha = 0.15f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = accentColor,
+                    modifier = Modifier.size(16.dp)
                 )
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Label
+            Text(
+                text = label,
+                fontSize = 10.sp,
+                color = TextMuted,
+                fontWeight = FontWeight.Medium,
+                letterSpacing = 0.5.sp
+            )
+            Spacer(modifier = Modifier.height(2.dp))
+
+            // Value
+            Text(
+                text = value,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold,
+                fontFamily = FontFamily.Monospace,
+                color = Color.White,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+
+            // Sub-value (e.g., change percent for best performer)
+            if (subValue != null) {
                 Text(
-                    text = formatChangePercent(changePercent),
-                    fontSize = 13.sp,
-                    fontFamily = FontFamily.Monospace,
-                    color = changeColor
-                )
-                Text(
-                    text = "Vol: ${formatVolume(listing.volume)}",
+                    text = subValue,
                     fontSize = 11.sp,
-                    color = TextMuted
+                    fontFamily = FontFamily.Monospace,
+                    fontWeight = FontWeight.SemiBold,
+                    color = subColor
                 )
             }
         }
     }
 }
 
-@Composable
-private fun SmallBadge(text: String) {
-    Box(
-        modifier = Modifier
-            .clip(RoundedCornerShape(6.dp))
-            .background(DarkCardBorder)
-            .padding(horizontal = 6.dp, vertical = 2.dp)
-    ) {
-        Text(text = text, fontSize = 10.sp, color = TextMuted, fontWeight = FontWeight.Medium)
-    }
-}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Premium Listing Card — Bloomberg/Robinhood style security card
+// ══════════════════════════════════════════════════════════════════════════════
 
 @Composable
-private fun ListingShimmerCard() {
-    val infiniteTransition = rememberInfiniteTransition(label = "shimmer")
-    val shimmerAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.3f, targetValue = 0.7f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(800, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse
-        ), label = "shimmer"
+private fun PremiumListingCard(listing: Listing, onClick: () -> Unit) {
+    val changePercent = listing.changePercent ?: 0.0
+    val isPositive = changePercent >= 0
+    val changeColor = if (isPositive) SuccessGreen else ErrorRed
+    val accentBrush = Brush.verticalGradient(
+        colors = if (isPositive) {
+            listOf(SuccessGreen, SuccessGreen.copy(alpha = 0.4f))
+        } else {
+            listOf(ErrorRed, ErrorRed.copy(alpha = 0.4f))
+        }
     )
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(80.dp)
             .clip(RoundedCornerShape(16.dp))
+            .background(DarkCard)
+            .border(
+                width = 1.dp,
+                color = DarkCardBorder.copy(alpha = 0.3f),
+                shape = RoundedCornerShape(16.dp)
+            )
+            .clickable { onClick() }
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(IntrinsicSize.Min)
+        ) {
+            // Left colored accent line
+            Box(
+                modifier = Modifier
+                    .width(4.dp)
+                    .fillMaxHeight()
+                    .background(accentBrush)
+            )
+
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 14.dp, end = 14.dp, top = 14.dp, bottom = 14.dp)
+            ) {
+                // Top row: Ticker + Name + Exchange badge (top-right)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.Top
+                ) {
+                    // Left column: Ticker + Name
+                    Column(modifier = Modifier.weight(1f)) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text(
+                                text = listing.ticker,
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = FontFamily.Monospace,
+                                color = Color.White
+                            )
+                            // Listing type badge
+                            SmallTypeBadge(
+                                text = if (listing.listingType == "STOCK") "AKC" else "FUT",
+                                color = Indigo500
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = listing.name,
+                            fontSize = 13.sp,
+                            color = TextMuted.copy(alpha = 0.8f),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+
+                    // Exchange badge top-right
+                    listing.exchangeAcronym?.let { exchange ->
+                        ExchangeBadge(text = exchange)
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Bottom row: Price + Change badge + Mini volume bar
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.Bottom
+                ) {
+                    // Price
+                    Text(
+                        text = formatPrice(listing.price),
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = FontFamily.Monospace,
+                        color = Color.White
+                    )
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        // Mini volume bar
+                        listing.volume?.let { vol ->
+                            VolumeBar(
+                                volume = vol,
+                                maxVolume = 100_000_000L, // normalized scale
+                                color = changeColor.copy(alpha = 0.4f)
+                            )
+                        }
+
+                        // Change% pill badge
+                        ChangeBadge(
+                            changePercent = changePercent,
+                            isPositive = isPositive,
+                            color = changeColor
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Change Badge — green/red pill with arrow icon
+// ══════════════════════════════════════════════════════════════════════════════
+
+@Composable
+private fun ChangeBadge(
+    changePercent: Double,
+    isPositive: Boolean,
+    color: Color
+) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(20.dp))
+            .background(color.copy(alpha = 0.15f))
+            .padding(horizontal = 10.dp, vertical = 5.dp)
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
+            Icon(
+                imageVector = if (isPositive) Icons.Filled.ArrowDropUp else Icons.Filled.ArrowDropDown,
+                contentDescription = null,
+                tint = color,
+                modifier = Modifier.size(16.dp)
+            )
+            Text(
+                text = formatChangePercent(changePercent),
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                fontFamily = FontFamily.Monospace,
+                color = color
+            )
+        }
+    }
+}
+
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Volume Bar — mini bar chart indicator
+// ══════════════════════════════════════════════════════════════════════════════
+
+@Composable
+private fun VolumeBar(
+    volume: Long,
+    maxVolume: Long,
+    color: Color
+) {
+    val fillRatio = (volume.toFloat() / maxVolume.toFloat()).coerceIn(0.05f, 1f)
+
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Bottom
+    ) {
+        // 4 mini bars of increasing height to simulate volume
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(1.5.dp),
+            verticalAlignment = Alignment.Bottom,
+            modifier = Modifier.height(20.dp)
+        ) {
+            val heights = listOf(0.3f, 0.55f, 0.4f, fillRatio)
+            heights.forEach { h ->
+                Box(
+                    modifier = Modifier
+                        .width(3.dp)
+                        .fillMaxHeight(h)
+                        .clip(RoundedCornerShape(topStart = 1.dp, topEnd = 1.dp))
+                        .background(color)
+                )
+            }
+        }
+        Spacer(modifier = Modifier.height(2.dp))
+        Text(
+            text = formatVolume(volume),
+            fontSize = 9.sp,
+            color = TextMuted.copy(alpha = 0.6f),
+            fontFamily = FontFamily.Monospace
+        )
+    }
+}
+
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Exchange Badge — small top-right badge
+// ══════════════════════════════════════════════════════════════════════════════
+
+@Composable
+private fun ExchangeBadge(text: String) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(
+                Brush.linearGradient(
+                    colors = listOf(
+                        Indigo500.copy(alpha = 0.12f),
+                        Violet600.copy(alpha = 0.12f)
+                    )
+                )
+            )
+            .border(
+                width = 0.5.dp,
+                color = Indigo500.copy(alpha = 0.3f),
+                shape = RoundedCornerShape(8.dp)
+            )
+            .padding(horizontal = 8.dp, vertical = 3.dp)
+    ) {
+        Text(
+            text = text,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.SemiBold,
+            fontFamily = FontFamily.Monospace,
+            color = Indigo400,
+            letterSpacing = 0.5.sp
+        )
+    }
+}
+
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Small Type Badge — listing type indicator (AKC / FUT)
+// ══════════════════════════════════════════════════════════════════════════════
+
+@Composable
+private fun SmallTypeBadge(text: String, color: Color) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(4.dp))
+            .background(color.copy(alpha = 0.15f))
+            .padding(horizontal = 5.dp, vertical = 1.dp)
+    ) {
+        Text(
+            text = text,
+            fontSize = 9.sp,
+            fontWeight = FontWeight.Bold,
+            fontFamily = FontFamily.Monospace,
+            color = color.copy(alpha = 0.8f),
+            letterSpacing = 0.5.sp
+        )
+    }
+}
+
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Shimmer Components
+// ══════════════════════════════════════════════════════════════════════════════
+
+@Composable
+private fun ShimmerBox(
+    modifier: Modifier = Modifier,
+    cornerRadius: Int = 16
+) {
+    val infiniteTransition = rememberInfiniteTransition(label = "shimmer")
+    val shimmerAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.15f, targetValue = 0.4f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1000, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ), label = "shimmerAlpha"
+    )
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(cornerRadius.dp))
             .background(DarkCard.copy(alpha = shimmerAlpha))
     )
 }
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
+@Composable
+private fun ListingShimmerCard() {
+    val infiniteTransition = rememberInfiniteTransition(label = "shimmerCard")
+    val shimmerAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.15f, targetValue = 0.4f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1000, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ), label = "shimmerCardAlpha"
+    )
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(DarkCard.copy(alpha = 0.5f))
+            .border(
+                width = 1.dp,
+                color = DarkCardBorder.copy(alpha = shimmerAlpha * 0.5f),
+                shape = RoundedCornerShape(16.dp)
+            )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(14.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column {
+                // Ticker shimmer
+                Box(
+                    modifier = Modifier
+                        .width(60.dp)
+                        .height(16.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(DarkCardBorder.copy(alpha = shimmerAlpha))
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                // Name shimmer
+                Box(
+                    modifier = Modifier
+                        .width(120.dp)
+                        .height(12.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(DarkCardBorder.copy(alpha = shimmerAlpha * 0.7f))
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                // Price shimmer
+                Box(
+                    modifier = Modifier
+                        .width(80.dp)
+                        .height(18.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(DarkCardBorder.copy(alpha = shimmerAlpha))
+                )
+            }
+
+            Column(horizontalAlignment = Alignment.End) {
+                // Exchange badge shimmer
+                Box(
+                    modifier = Modifier
+                        .width(48.dp)
+                        .height(18.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(DarkCardBorder.copy(alpha = shimmerAlpha * 0.5f))
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                // Change badge shimmer
+                Box(
+                    modifier = Modifier
+                        .width(72.dp)
+                        .height(26.dp)
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(DarkCardBorder.copy(alpha = shimmerAlpha * 0.6f))
+                )
+            }
+        }
+    }
+}
+
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Helper functions (unchanged logic)
+// ══════════════════════════════════════════════════════════════════════════════
 
 private fun formatVolume(volume: Long?): String {
     if (volume == null) return "-"

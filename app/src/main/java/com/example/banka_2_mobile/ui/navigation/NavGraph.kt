@@ -1,18 +1,29 @@
 package com.example.banka_2_mobile.ui.navigation
 
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ShowChart
 import androidx.compose.material.icons.filled.AccountBalanceWallet
-import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.Shield
-import androidx.compose.material.icons.filled.ShowChart
-import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material.icons.filled.WorkOutline
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavType
@@ -54,6 +65,7 @@ object Routes {
     fun createOrder(listingId: Long, direction: String) = "create_order/$listingId/$direction"
 }
 
+// ─── Bottom nav items: Berza, Portfolio, Pocetna (center), Nalozi, OTP ───────
 private val bottomNavItems = listOf(
     BottomNavItem(
         route = Routes.SECURITIES,
@@ -83,6 +95,7 @@ private val bottomNavItems = listOf(
     )
 )
 
+// Routes where the bottom nav bar is visible (main tabs + quick-action screens)
 private val mainRoutes = setOf(
     Routes.HOME,
     Routes.TRANSACTIONS,
@@ -93,6 +106,106 @@ private val mainRoutes = setOf(
     Routes.PORTFOLIO,
     Routes.MY_ORDERS
 )
+
+// ─── Transition configuration ────────────────────────────────────────────────
+
+private const val TRANSITION_DURATION = 300
+
+private fun defaultEnterTransition(): EnterTransition =
+    fadeIn(
+        animationSpec = tween(
+            durationMillis = TRANSITION_DURATION,
+            easing = FastOutSlowInEasing
+        )
+    ) + slideInHorizontally(
+        initialOffsetX = { fullWidth -> (fullWidth * 0.08f).toInt() },
+        animationSpec = tween(
+            durationMillis = TRANSITION_DURATION,
+            easing = FastOutSlowInEasing
+        )
+    )
+
+private fun defaultExitTransition(): ExitTransition =
+    fadeOut(
+        animationSpec = tween(
+            durationMillis = TRANSITION_DURATION,
+            easing = FastOutSlowInEasing
+        )
+    ) + slideOutHorizontally(
+        targetOffsetX = { fullWidth -> -(fullWidth * 0.08f).toInt() },
+        animationSpec = tween(
+            durationMillis = TRANSITION_DURATION,
+            easing = FastOutSlowInEasing
+        )
+    )
+
+private fun defaultPopEnterTransition(): EnterTransition =
+    fadeIn(
+        animationSpec = tween(
+            durationMillis = TRANSITION_DURATION,
+            easing = FastOutSlowInEasing
+        )
+    ) + slideInHorizontally(
+        initialOffsetX = { fullWidth -> -(fullWidth * 0.08f).toInt() },
+        animationSpec = tween(
+            durationMillis = TRANSITION_DURATION,
+            easing = FastOutSlowInEasing
+        )
+    )
+
+private fun defaultPopExitTransition(): ExitTransition =
+    fadeOut(
+        animationSpec = tween(
+            durationMillis = TRANSITION_DURATION,
+            easing = FastOutSlowInEasing
+        )
+    ) + slideOutHorizontally(
+        targetOffsetX = { fullWidth -> (fullWidth * 0.08f).toInt() },
+        animationSpec = tween(
+            durationMillis = TRANSITION_DURATION,
+            easing = FastOutSlowInEasing
+        )
+    )
+
+// Detail screens slide up from the bottom
+private fun detailEnterTransition(): EnterTransition =
+    fadeIn(
+        animationSpec = tween(
+            durationMillis = TRANSITION_DURATION,
+            easing = FastOutSlowInEasing
+        )
+    ) + slideInVertically(
+        initialOffsetY = { fullHeight -> (fullHeight * 0.06f).toInt() },
+        animationSpec = tween(
+            durationMillis = TRANSITION_DURATION,
+            easing = FastOutSlowInEasing
+        )
+    )
+
+private fun detailPopExitTransition(): ExitTransition =
+    fadeOut(
+        animationSpec = tween(
+            durationMillis = TRANSITION_DURATION,
+            easing = FastOutSlowInEasing
+        )
+    ) + slideOutVertically(
+        targetOffsetY = { fullHeight -> (fullHeight * 0.06f).toInt() },
+        animationSpec = tween(
+            durationMillis = TRANSITION_DURATION,
+            easing = FastOutSlowInEasing
+        )
+    )
+
+// Login uses a simple crossfade (no slide)
+private fun loginEnterTransition(): EnterTransition =
+    fadeIn(animationSpec = tween(durationMillis = 400))
+
+private fun loginExitTransition(): ExitTransition =
+    fadeOut(animationSpec = tween(durationMillis = 400))
+
+// ═════════════════════════════════════════════════════════════════════════════
+//  NavGraph
+// ═════════════════════════════════════════════════════════════════════════════
 
 @Composable
 fun NavGraph() {
@@ -113,6 +226,7 @@ fun NavGraph() {
     }
 
     Scaffold(
+        containerColor = Color.Transparent,
         bottomBar = {
             if (showBottomBar) {
                 BottomNavBar(
@@ -132,12 +246,27 @@ fun NavGraph() {
                 )
             }
         }
-    ) { _ ->
+    ) { innerPadding ->
         NavHost(
             navController = navController,
-            startDestination = startDestination
+            startDestination = startDestination,
+            modifier = Modifier
+                .statusBarsPadding()
+                .padding(bottom = innerPadding.calculateBottomPadding()),
+            enterTransition = { defaultEnterTransition() },
+            exitTransition = { defaultExitTransition() },
+            popEnterTransition = { defaultPopEnterTransition() },
+            popExitTransition = { defaultPopExitTransition() }
         ) {
-            composable(Routes.LOGIN) {
+            // ─── Auth ────────────────────────────────────────────────────
+
+            composable(
+                route = Routes.LOGIN,
+                enterTransition = { loginEnterTransition() },
+                exitTransition = { loginExitTransition() },
+                popEnterTransition = { loginEnterTransition() },
+                popExitTransition = { loginExitTransition() }
+            ) {
                 LoginScreen(
                     onLoginSuccess = {
                         navController.navigate(Routes.HOME) {
@@ -147,10 +276,13 @@ fun NavGraph() {
                 )
             }
 
+            // ─── Main tabs ──────────────────────────────────────────────
+
             composable(Routes.HOME) {
                 HomeScreen(onLogout = navigateToLogin)
             }
 
+            // Quick-action screens accessible from HomeScreen
             composable(Routes.TRANSACTIONS) {
                 TransactionsScreen(onLogout = navigateToLogin)
             }
@@ -167,7 +299,7 @@ fun NavGraph() {
                 OtpScreen(onLogout = navigateToLogin)
             }
 
-            // ─── Celina 3: Berza routes ──────────────────────
+            // ─── Celina 3: Berza ────────────────────────────────────────
 
             composable(Routes.SECURITIES) {
                 SecuritiesScreen(
@@ -182,7 +314,11 @@ fun NavGraph() {
                 route = Routes.SECURITY_DETAIL,
                 arguments = listOf(
                     navArgument("listingId") { type = NavType.LongType }
-                )
+                ),
+                enterTransition = { detailEnterTransition() },
+                exitTransition = { defaultExitTransition() },
+                popEnterTransition = { defaultPopEnterTransition() },
+                popExitTransition = { detailPopExitTransition() }
             ) { backStackEntry ->
                 val listingId = backStackEntry.arguments?.getLong("listingId") ?: 0L
                 SecurityDetailScreen(
@@ -209,7 +345,11 @@ fun NavGraph() {
                 arguments = listOf(
                     navArgument("listingId") { type = NavType.LongType },
                     navArgument("direction") { type = NavType.StringType }
-                )
+                ),
+                enterTransition = { detailEnterTransition() },
+                exitTransition = { defaultExitTransition() },
+                popEnterTransition = { defaultPopEnterTransition() },
+                popExitTransition = { detailPopExitTransition() }
             ) { backStackEntry ->
                 val listingId = backStackEntry.arguments?.getLong("listingId") ?: 0L
                 val direction = backStackEntry.arguments?.getString("direction") ?: "BUY"
