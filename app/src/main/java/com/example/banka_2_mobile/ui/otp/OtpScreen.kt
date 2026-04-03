@@ -341,35 +341,6 @@ fun OtpScreen(
                     }
 
                     Spacer(modifier = Modifier.height(48.dp))
-
-                    // Logout button - outline style, subtle
-                    OutlinedButton(
-                        onClick = {
-                            authRepository.clearTokens()
-                            onLogout()
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 24.dp),
-                        border = BorderStroke(1.dp, DarkCardBorder),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = TextMuted
-                        )
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.Logout,
-                            contentDescription = "Odjavi se",
-                            modifier = Modifier.size(18.dp),
-                            tint = TextMuted
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "Odjavi se",
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
                 }
             }
         }

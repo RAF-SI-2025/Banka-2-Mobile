@@ -25,6 +25,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.CreditCard
+import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.CurrencyExchange
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -42,6 +43,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.clickable
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
@@ -76,7 +78,8 @@ import java.util.Locale
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
-    onLogout: () -> Unit
+    onLogout: () -> Unit,
+    onNavigate: (String) -> Unit = {}
 ) {
     val context = LocalContext.current
     val authRepository = remember { AuthRepository(context) }
@@ -186,19 +189,44 @@ fun HomeScreen(
                         // ─── Header: Greeting + Date ───────────────────
                         item {
                             Spacer(modifier = Modifier.height(16.dp))
-                            Column {
-                                Text(
-                                    text = "Dobrodosli, $displayName \uD83D\uDC4B",
-                                    fontSize = 24.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color.White
-                                )
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text(
-                                    text = formattedDate(),
-                                    fontSize = 14.sp,
-                                    color = TextMuted
-                                )
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.Top
+                            ) {
+                                Column {
+                                    Text(
+                                        text = "Dobrodosli, $displayName \uD83D\uDC4B",
+                                        fontSize = 24.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = formattedDate(),
+                                        fontSize = 14.sp,
+                                        color = TextMuted
+                                    )
+                                }
+                                // Logout button
+                                Box(
+                                    modifier = Modifier
+                                        .size(40.dp)
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(DarkCard)
+                                        .clickable {
+                                            authRepository.clearTokens()
+                                            onLogout()
+                                        },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Filled.Logout,
+                                        contentDescription = "Odjavi se",
+                                        tint = TextMuted,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
                             }
                         }
 
@@ -209,7 +237,7 @@ fun HomeScreen(
 
                         // ─── Quick Actions Row ─────────────────────────
                         item {
-                            QuickActionsRow()
+                            QuickActionsRow(onNavigate = onNavigate)
                         }
 
                         // ─── Section Title: Moji racuni ────────────────
@@ -387,16 +415,17 @@ private fun TotalBalanceCard(accounts: List<Account>) {
 
 private data class QuickAction(
     val label: String,
-    val icon: ImageVector
+    val icon: ImageVector,
+    val route: String
 )
 
 @Composable
-private fun QuickActionsRow() {
+private fun QuickActionsRow(onNavigate: (String) -> Unit) {
     val actions = listOf(
-        QuickAction("Placanja", Icons.AutoMirrored.Filled.Send),
-        QuickAction("Prenos", Icons.Filled.SwapHoriz),
-        QuickAction("Menjacnica", Icons.Filled.CurrencyExchange),
-        QuickAction("Kartice", Icons.Filled.CreditCard)
+        QuickAction("Placanja", Icons.AutoMirrored.Filled.Send, "transactions"),
+        QuickAction("Prenos", Icons.Filled.SwapHoriz, "exchange"),
+        QuickAction("Menjacnica", Icons.Filled.CurrencyExchange, "exchange"),
+        QuickAction("Kartice", Icons.Filled.CreditCard, "cards")
     )
 
     Row(
@@ -404,15 +433,16 @@ private fun QuickActionsRow() {
         horizontalArrangement = Arrangement.SpaceEvenly
     ) {
         actions.forEach { action ->
-            QuickActionButton(action)
+            QuickActionButton(action, onClick = { onNavigate(action.route) })
         }
     }
 }
 
 @Composable
-private fun QuickActionButton(action: QuickAction) {
+private fun QuickActionButton(action: QuickAction, onClick: () -> Unit) {
     Column(
-        horizontalAlignment = Alignment.CenterHorizontally
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.clickable(onClick = onClick)
     ) {
         Box(
             modifier = Modifier

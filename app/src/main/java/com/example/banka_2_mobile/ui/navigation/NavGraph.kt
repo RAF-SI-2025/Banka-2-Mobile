@@ -279,7 +279,10 @@ fun NavGraph() {
             // ─── Main tabs ──────────────────────────────────────────────
 
             composable(Routes.HOME) {
-                HomeScreen(onLogout = navigateToLogin)
+                HomeScreen(
+                    onLogout = navigateToLogin,
+                    onNavigate = { route -> navController.navigate(route) }
+                )
             }
 
             // Quick-action screens accessible from HomeScreen
