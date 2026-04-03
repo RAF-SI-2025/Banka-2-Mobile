@@ -20,6 +20,10 @@ data class RefreshRequest(
     val refreshToken: String
 )
 
+data class PasswordResetRequest(
+    val email: String
+)
+
 data class OtpResponse(
     val active: Boolean,
     val code: String? = null,
@@ -130,10 +134,6 @@ data class CalculateExchangeResponse(
 
 // ─── Celina 3: Berza / Securities Models ──────────────────
 
-// TODO: Verify all field names against backend ListingDto once endpoints are ready.
-//       Backend repo: RAF-SI-2025/Banka-2-Backend — check listing-service DTOs.
-//       Fields below are based on the project specification (Celina 3).
-
 data class Listing(
     val id: Long,
     val ticker: String,
@@ -165,9 +165,6 @@ data class ListingDailyPrice(
     val volume: Long
 )
 
-// TODO: Backend may return Spring Page<Listing> — confirm field names
-//       match PaginatedResponse<T> or if a separate DTO is used.
-//       If identical to PaginatedResponse, reuse that generic class instead.
 data class PaginatedListingResponse(
     val content: List<Listing> = emptyList(),
     val totalPages: Int = 0,
@@ -197,11 +194,6 @@ data class PortfolioSummary(
     val taxOwed: Double? = null            // porez na kapitalnu dobit
 )
 
-// TODO: Confirm order types and directions with backend.
-//       Spec says: orderType = MARKET | LIMIT | STOP | STOP_LIMIT
-//       direction = BUY | SELL
-//       allOrNone = boolean (AON flag)
-//       Backend may also require accountId for settlement.
 data class CreateOrderRequest(
     val listingId: Long,
     val orderType: String,      // "MARKET", "LIMIT", "STOP", "STOP_LIMIT"

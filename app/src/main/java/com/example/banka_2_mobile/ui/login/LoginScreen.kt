@@ -81,11 +81,13 @@ import com.example.banka_2_mobile.ui.theme.Rose500
 import com.example.banka_2_mobile.ui.theme.TextMuted
 import com.example.banka_2_mobile.ui.theme.Violet400
 import com.example.banka_2_mobile.ui.theme.Violet600
+import androidx.compose.foundation.clickable
 import kotlinx.coroutines.launch
 
 @Composable
 fun LoginScreen(
-    onLoginSuccess: () -> Unit
+    onLoginSuccess: () -> Unit,
+    onForgotPassword: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val authRepository = remember { AuthRepository(context) }
@@ -394,6 +396,22 @@ fun LoginScreen(
                         ),
                         modifier = Modifier.fillMaxWidth()
                     )
+
+                    // Forgot password link
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 8.dp),
+                        contentAlignment = Alignment.CenterEnd
+                    ) {
+                        Text(
+                            text = "Zaboravili ste lozinku?",
+                            fontSize = 13.sp,
+                            color = Indigo400,
+                            fontWeight = FontWeight.Medium,
+                            modifier = Modifier.clickable { onForgotPassword() }
+                        )
+                    }
 
                     // Inline error text with animation
                     AnimatedVisibility(

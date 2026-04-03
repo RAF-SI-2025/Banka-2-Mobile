@@ -36,6 +36,7 @@ import com.example.banka_2_mobile.data.repository.AuthRepository
 import com.example.banka_2_mobile.ui.cards.CardsScreen
 import com.example.banka_2_mobile.ui.exchange.ExchangeScreen
 import com.example.banka_2_mobile.ui.home.HomeScreen
+import com.example.banka_2_mobile.ui.login.ForgotPasswordScreen
 import com.example.banka_2_mobile.ui.login.LoginScreen
 import com.example.banka_2_mobile.ui.orders.CreateOrderScreen
 import com.example.banka_2_mobile.ui.orders.MyOrdersScreen
@@ -49,6 +50,7 @@ import com.example.banka_2_mobile.ui.transfers.TransferScreen
 
 object Routes {
     const val LOGIN = "login"
+    const val FORGOT_PASSWORD = "forgot_password"
     const val HOME = "home"
     const val TRANSACTIONS = "transactions"
     const val CARDS = "cards"
@@ -276,7 +278,22 @@ fun NavGraph() {
                         navController.navigate(Routes.HOME) {
                             popUpTo(Routes.LOGIN) { inclusive = true }
                         }
+                    },
+                    onForgotPassword = {
+                        navController.navigate(Routes.FORGOT_PASSWORD)
                     }
+                )
+            }
+
+            composable(
+                route = Routes.FORGOT_PASSWORD,
+                enterTransition = { loginEnterTransition() },
+                exitTransition = { loginExitTransition() },
+                popEnterTransition = { loginEnterTransition() },
+                popExitTransition = { loginExitTransition() }
+            ) {
+                ForgotPasswordScreen(
+                    onBack = { navController.popBackStack() }
                 )
             }
 
