@@ -1,11 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!--
+      Native Android theme za baseline (pre Compose-a) — Compose preuzima
+      stilizaciju kroz [BankaTheme]. Ovde drzimo samo no-action-bar i
+      banking pozadinu da bi splash bio konzistentan.
+    -->
     <style name="Theme.Banka2Mobile" parent="android:Theme.Material.NoActionBar">
         <item name="android:colorBackground">#070B24</item>
         <item name="android:statusBarColor">#070B24</item>
         <item name="android:navigationBarColor">#070B24</item>
         <item name="android:windowBackground">#070B24</item>
         <item name="android:windowLightStatusBar">false</item>
-        <item name="android:windowLightNavigationBar">false</item>
+    </style>
+
+    <style name="Theme.Banka2Mobile.Splash" parent="Theme.Banka2Mobile">
+        <item name="android:windowBackground">@drawable/splash_background</item>
     </style>
 </resources>

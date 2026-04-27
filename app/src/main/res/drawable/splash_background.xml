@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:type="linear"
+                android:startColor="#070B24"
+                android:endColor="#0D1240"
+                android:angle="270" />
+        </shape>
+    </item>
+    <item
+        android:gravity="center"
+        android:width="160dp"
+        android:height="160dp">
+        <bitmap android:src="@drawable/banka_logo" android:gravity="center" />
+    </item>
+</layer-list>
