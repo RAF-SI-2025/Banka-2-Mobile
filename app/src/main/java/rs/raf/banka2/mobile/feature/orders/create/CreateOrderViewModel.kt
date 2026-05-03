@@ -16,10 +16,12 @@ import rs.raf.banka2.mobile.core.auth.SessionState
 import rs.raf.banka2.mobile.core.auth.UserRole
 import rs.raf.banka2.mobile.core.network.ApiResult
 import rs.raf.banka2.mobile.data.dto.account.AccountDto
+import rs.raf.banka2.mobile.data.dto.fund.FundSummaryDto
 import rs.raf.banka2.mobile.data.dto.listing.ListingDto
 import rs.raf.banka2.mobile.data.dto.order.CreateOrderDto
 import rs.raf.banka2.mobile.data.repository.AccountRepository
 import rs.raf.banka2.mobile.data.repository.ExchangeManagementRepository
+import rs.raf.banka2.mobile.data.repository.FundRepository
 import rs.raf.banka2.mobile.data.repository.ListingRepository
 import rs.raf.banka2.mobile.data.repository.OrderRepository
 import javax.inject.Inject
@@ -31,6 +33,7 @@ class CreateOrderViewModel @Inject constructor(
     private val listingRepository: ListingRepository,
     private val exchangeManagementRepository: ExchangeManagementRepository,
     private val orderRepository: OrderRepository,
+    private val fundRepository: FundRepository,
     private val sessionManager: SessionManager
 ) : ViewModel() {
 
@@ -63,6 +66,12 @@ class CreateOrderViewModel @Inject constructor(
                         canPickFund = role.isSupervisor
                     )
                 }
+                // Supervizor moze da kupuje "u ime fonda" — fetchujemo listu fondova
+                // da bi UI prikazao dropdown sa imenima umesto ID input polja.
+                // Spec Celina 4 (Nova) §3905-3925.
+                if (role.isSupervisor && _state.value.funds.isEmpty()) {
+                    loadFunds()
+                }
             }
         }
     }
@@ -74,10 +83,27 @@ class CreateOrderViewModel @Inject constructor(
     fun setStopPrice(value: String) = _state.update { it.copy(stopPrice = value, error = null) }
     fun setAllOrNone(value: Boolean) = _state.update { it.copy(allOrNone = value) }
     fun selectAccount(account: AccountDto) = _state.update { it.copy(selectedAccount = account) }
-    fun setOnBehalfOfFundId(value: String) = _state.update {
-        it.copy(onBehalfOfFundId = value.filter { ch -> ch.isDigit() })
+    fun selectFund(fund: FundSummaryDto?) = _state.update {
+        it.copy(selectedFund = fund, onBehalfOfFundId = fund?.id?.toString().orEmpty())
     }
     fun setUseMargin(value: Boolean) = _state.update { it.copy(useMargin = value) }
+
+    /**
+     * Spec Celina 4 (Nova): supervizor moze da naznaci da kupuje
+     *  - u ime banke (sa biranjem bankinog racuna), ili
+     *  - u ime investicionog fonda kojim upravlja.
+     *
+     * BE prepoznaje "kupovina za banku" preko `accountId` koji pripada bankinom
+     * vlasniku — UI samo nudi supervizoru da bira iz svojih (account) listi.
+     * Fond rezim postavi `selectedFund` i prosledjuje `onBehalfOfFundId` u DTO-u.
+     */
+    private suspend fun loadFunds() {
+        when (val result = fundRepository.list()) {
+            is ApiResult.Success -> _state.update { it.copy(funds = result.data) }
+            is ApiResult.Failure -> Unit // Tihi fail — supervizor moze i bez fond selektora
+            ApiResult.Loading -> Unit
+        }
+    }
 
     fun openVerification() {
         val current = _state.value
@@ -188,6 +214,8 @@ data class CreateOrderState(
     val listing: ListingDto? = null,
     val accounts: List<AccountDto> = emptyList(),
     val selectedAccount: AccountDto? = null,
+    val funds: List<FundSummaryDto> = emptyList(),
+    val selectedFund: FundSummaryDto? = null,
     val direction: OrderDirection = OrderDirection.Buy,
     val orderType: OrderType = OrderType.Market,
     val quantity: String = "",

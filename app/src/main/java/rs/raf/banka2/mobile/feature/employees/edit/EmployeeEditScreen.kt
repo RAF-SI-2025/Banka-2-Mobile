@@ -14,10 +14,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -132,5 +134,37 @@ fun EmployeeEditScreen(
                 }
             }
         }
+    }
+
+    state.pendingReassign?.let { pending ->
+        AlertDialog(
+            onDismissRequest = viewModel::cancelReassign,
+            title = { Text("Prebacivanje vlasnistva fondova") },
+            text = {
+                Column {
+                    Text(
+                        "Uklanjas supervizor permisiju zaposlenom koji upravlja sledecim fondovima. " +
+                            "Po spec-u Celine 4, vlasnistvo nad fondovima ce se prebaciti na tebe (admina " +
+                            "koji vrsi promenu).",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    pending.managedFunds.forEach { fund ->
+                        Text(
+                            "• ${fund.name} (#${fund.id})",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = viewModel::confirmReassign) { Text("Potvrdi i prebaci") }
+            },
+            dismissButton = {
+                TextButton(onClick = viewModel::cancelReassign) { Text("Otkazi") }
+            }
+        )
     }
 }

@@ -246,7 +246,10 @@ class NewPaymentViewModel @Inject constructor(
     }
 
     private companion object {
-        val TERMINAL_STATUSES = setOf("COMMITTED", "ABORTED", "STUCK", "NOT_READY")
+        // NOT_READY je 2PC respond status iz Banke B koji okida rollback u
+        // Banci A — BE ce ga interno transformisati u ABORTED. Ne sme biti u
+        // terminal listi jer bi polling stao pre nego sto BE zavrsi rollback.
+        val TERMINAL_STATUSES = setOf("COMMITTED", "ABORTED", "STUCK")
     }
 }
 

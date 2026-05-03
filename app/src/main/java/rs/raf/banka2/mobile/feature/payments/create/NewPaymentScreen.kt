@@ -189,24 +189,30 @@ private fun InterbankRoutingHint(state: NewPaymentState) {
     val routing = AccountFormatter.routingPrefix(state.toAccountNumber)
     if (routing == null || state.toAccountNumber.length < 3) return
     val isInter = routing != "222"
+    // Spec Celina 5 (Nova): kad je placanje inter-bank, korisnik mora odmah da
+    // bude obavesten da transakcija ide preko 2-Phase Commit protokola, da
+    // moze potrajati 1-2 min, i da ce videti progress posle Submit-a.
+    val accent = if (isInter) Color(0xFFEAB308) else MaterialTheme.colorScheme.primary
     GlassCard(modifier = Modifier.fillMaxWidth()) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(
                 imageVector = Icons.Filled.AccountBalanceWallet,
                 contentDescription = null,
-                tint = if (isInter) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.primary
+                tint = accent
             )
             Spacer(Modifier.width(8.dp))
             Column {
                 Text(
-                    text = if (isInter) "Inter-bank placanje (banka $routing)"
+                    text = if (isInter) "Medjubankarsko placanje (banka $routing)"
                     else "Intra-bank placanje (Banka 2)",
                     style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onSurface,
+                    color = if (isInter) accent else MaterialTheme.colorScheme.onSurface,
                     fontWeight = FontWeight.SemiBold
                 )
                 Text(
-                    text = if (isInter) "Pokrece se 2-Phase Commit transakcija. Mozes pratiti status u realnom vremenu."
+                    text = if (isInter)
+                        "Pokrece se 2-Phase Commit transakcija ka drugoj banci. " +
+                            "Moze potrajati 1-2 min — pratis status u realnom vremenu po Submit-u."
                     else "Trenutni saldo se direktno prebacuje primaocu.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -228,7 +234,8 @@ private fun InterbankProgressDialog(
     progress: InterbankProgress,
     onDismiss: () -> Unit
 ) {
-    val terminal = progress.status in setOf("COMMITTED", "ABORTED", "STUCK", "NOT_READY")
+    // NOT_READY je 2PC respond — nije terminal; BE ga prevodi u ABORTED.
+    val terminal = progress.status in setOf("COMMITTED", "ABORTED", "STUCK")
     val currentIndex = INTERBANK_PHASES.indexOfFirst { it.first == progress.status }.coerceAtLeast(0)
     AlertDialog(
         onDismissRequest = { if (terminal) onDismiss() },

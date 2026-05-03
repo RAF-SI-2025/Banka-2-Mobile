@@ -180,6 +180,9 @@ private fun EmployeeStats(
     val portfolioValue = summary?.totalValue ?: 0.0
     val portfolioProfit = summary?.totalProfit ?: 0.0
     val taxOwed = summary?.taxOwed ?: 0.0
+    // BE vraca portfolio currency u summary-ju; default RSD ako fali. Ranije
+    // hardkodovano "USD" ne odgovara realnom resu.
+    val portfolioCurrency = summary?.currency?.takeIf { it.isNotBlank() } ?: "RSD"
     val pending = recentOrders.count { it.status == "PENDING" }
     val approved = recentOrders.count { it.status == "APPROVED" }
     val done = recentOrders.count { it.status == "DONE" }
@@ -188,14 +191,14 @@ private fun EmployeeStats(
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             StatCard(
                 title = "Portfolio",
-                value = MoneyFormatter.format(portfolioValue, 0) + " USD",
+                value = MoneyFormatter.format(portfolioValue, 0) + " " + portfolioCurrency,
                 icon = Icons.Filled.WorkOutline,
                 accent = Color(0xFF6366F1),
                 modifier = Modifier.weight(1f)
             )
             StatCard(
                 title = if (portfolioProfit >= 0) "Profit" else "Gubitak",
-                value = (if (portfolioProfit >= 0) "+" else "") + MoneyFormatter.format(portfolioProfit, 0) + " USD",
+                value = (if (portfolioProfit >= 0) "+" else "") + MoneyFormatter.format(portfolioProfit, 0) + " " + portfolioCurrency,
                 icon = if (portfolioProfit >= 0) Icons.AutoMirrored.Filled.TrendingUp else Icons.AutoMirrored.Filled.TrendingDown,
                 accent = if (portfolioProfit >= 0) Color(0xFF10B981) else Color(0xFFEF4444),
                 modifier = Modifier.weight(1f)
@@ -295,9 +298,13 @@ private fun EmployeeQuickActions(role: UserRole, onNavigate: (HomeAction) -> Uni
             add(EmpQuickItem("Aktuari", "Limiti", Icons.AutoMirrored.Filled.TrendingUp, HomeAction.OpenActuaries, listOf(Color(0xFFA855F7), Color(0xFF7C3AED))))
             add(EmpQuickItem("Porez", "Portal", Icons.Filled.Calculate, HomeAction.OpenTax, listOf(Color(0xFFF59E0B), Color(0xFFB45309))))
             add(EmpQuickItem("Profit Banke", "Aktuari + fondovi", Icons.Filled.AccountBalance, HomeAction.OpenProfitBank, listOf(Color(0xFF06B6D4), Color(0xFF0E7490))))
+            // Spec Celina 4 (Nova) §137-141: supervizori imaju OTC pristup + Investicioni fondovi (discovery + create)
+            add(EmpQuickItem("OTC", "Trgovina ponuda", Icons.Filled.ShoppingCart, HomeAction.OpenOtc, listOf(Color(0xFF6366F1), Color(0xFF4F46E5))))
             add(EmpQuickItem("Berze", "Test mode", Icons.AutoMirrored.Filled.ShowChart, HomeAction.OpenExchangesManagement, listOf(Color(0xFF8B5CF6), Color(0xFF6D28D9))))
             add(EmpQuickItem("Marzni +", "Novi margin", Icons.Filled.Add, HomeAction.OpenMarginCreate, listOf(Color(0xFFE11D48), Color(0xFFBE123C))))
         }
+        // Spec Celina 4 (Nova) §137-141: agenti vide Investicioni fondovi (discovery & details), supervizori i admini takodje
+        add(EmpQuickItem("Fondovi", "Investicioni", Icons.Filled.WorkOutline, HomeAction.OpenFunds, listOf(Color(0xFF22D3EE), Color(0xFF0891B2))))
         add(EmpQuickItem("Berza", "Hartije", Icons.AutoMirrored.Filled.ShowChart, HomeAction.OpenSecurities, listOf(Color(0xFF14B8A6), Color(0xFF0891B2))))
         add(EmpQuickItem("Portfolio", "Moje hartije", Icons.Filled.WorkOutline, HomeAction.OpenPortfolio, listOf(Color(0xFFF97316), Color(0xFFEA580C))))
     }

@@ -92,7 +92,7 @@ fun OtcOffersAndContractsScreen(
                 .fillMaxSize()
                 .padding(horizontal = 16.dp)
         ) {
-            TabsRow(state.tab, viewModel::setTab)
+            TabsRow(state.tab, state.unreadIntra, state.unreadInter, viewModel::setTab)
             Spacer(Modifier.height(8.dp))
             ErrorBanner(state.error)
             when (state.tab) {
@@ -143,7 +143,12 @@ fun OtcOffersAndContractsScreen(
 }
 
 @Composable
-private fun TabsRow(selected: OtcTab, onSelect: (OtcTab) -> Unit) {
+private fun TabsRow(
+    selected: OtcTab,
+    unreadIntra: Int,
+    unreadInter: Int,
+    onSelect: (OtcTab) -> Unit
+) {
     LazyRow(
         modifier = Modifier
             .fillMaxWidth()
@@ -152,7 +157,16 @@ private fun TabsRow(selected: OtcTab, onSelect: (OtcTab) -> Unit) {
     ) {
         items(OtcTab.entries.toList()) { tab ->
             val isSelected = selected == tab
-            Box(
+            // Discord-style unread badge — Spec Celina 4 (Nova) §2030-2090.
+            // Badge se prikazuje samo na "Ponude" tabovima (ne na "Ugovori") i samo
+            // kad je brojac > 0, slicno notifikacionom pristupu.
+            val badge = when (tab) {
+                OtcTab.OffersDomestic -> unreadIntra
+                OtcTab.OffersForeign -> unreadInter
+                else -> 0
+            }
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .clip(RoundedCornerShape(12.dp))
                     .background(
@@ -168,6 +182,23 @@ private fun TabsRow(selected: OtcTab, onSelect: (OtcTab) -> Unit) {
                     color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                     fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
                 )
+                if (badge > 0) {
+                    Spacer(Modifier.size(6.dp))
+                    Box(
+                        modifier = Modifier
+                            .size(20.dp)
+                            .clip(RoundedCornerShape(50))
+                            .background(MaterialTheme.colorScheme.error),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            if (badge > 9) "9+" else badge.toString(),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onError,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
             }
         }
     }

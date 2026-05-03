@@ -23,7 +23,6 @@ import rs.raf.banka2.mobile.data.api.EmployeeApi
 import rs.raf.banka2.mobile.data.api.ExchangeApi
 import rs.raf.banka2.mobile.data.api.ExchangeManagementApi
 import rs.raf.banka2.mobile.data.api.FundApi
-import rs.raf.banka2.mobile.data.api.InterbankApi
 import rs.raf.banka2.mobile.data.api.ListingApi
 import rs.raf.banka2.mobile.data.api.LoanApi
 import rs.raf.banka2.mobile.data.api.MarginApi
@@ -180,11 +179,6 @@ object NetworkModule {
     @Singleton
     fun provideProfitBankApi(retrofit: Retrofit): ProfitBankApi =
         retrofit.create(ProfitBankApi::class.java)
-
-    @Provides
-    @Singleton
-    fun provideInterbankApi(retrofit: Retrofit): InterbankApi =
-        retrofit.create(InterbankApi::class.java)
 
     @Provides
     @Singleton

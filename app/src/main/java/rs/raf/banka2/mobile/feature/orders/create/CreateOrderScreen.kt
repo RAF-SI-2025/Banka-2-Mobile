@@ -185,18 +185,12 @@ fun CreateOrderScreen(
                     }
                 }
             }
-            if (state.canPickFund) {
-                GlassCard(modifier = Modifier.fillMaxWidth()) {
-                    Text("Kupujem u ime fonda (opciono)", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
-                    Spacer(Modifier.height(6.dp))
-                    AppTextField(
-                        value = state.onBehalfOfFundId,
-                        onValueChange = viewModel::setOnBehalfOfFundId,
-                        label = "ID investicionog fonda",
-                        keyboardType = KeyboardType.Number,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
+            if (state.canPickFund && state.funds.isNotEmpty()) {
+                FundPicker(
+                    funds = state.funds,
+                    selected = state.selectedFund,
+                    onSelect = viewModel::selectFund
+                )
             }
             if (state.accounts.isNotEmpty()) {
                 AccountPicker(state.accounts, state.selectedAccount, viewModel::selectAccount)
@@ -326,6 +320,88 @@ private fun AccountPicker(
                     Text(acc.name?.takeIf { it.isNotBlank() } ?: acc.accountType ?: "Racun", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
                     Text(AccountFormatter.formatAccountNumber(acc.accountNumber), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text(MoneyFormatter.formatWithCurrency(acc.availableBalance, acc.currency), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Spec Celina 4 (Nova) §3905-3925: supervizor pri kupovini hartije bira da li
+ * kupuje za banku ili za jedan od fondova kojima upravlja. UI prikazuje
+ * "Banka" chip + chip-ove za sve fondove sa imenom + likvidnoscu, da
+ * supervizor vizuelno vidi koliko ima dostupnog novca u svakom fondu.
+ */
+@Composable
+private fun FundPicker(
+    funds: List<rs.raf.banka2.mobile.data.dto.fund.FundSummaryDto>,
+    selected: rs.raf.banka2.mobile.data.dto.fund.FundSummaryDto?,
+    onSelect: (rs.raf.banka2.mobile.data.dto.fund.FundSummaryDto?) -> Unit
+) {
+    GlassCard(modifier = Modifier.fillMaxWidth()) {
+        Text("Kupujem u ime", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
+        Text(
+            "Bira se da li hartija ide na bankin racun ili u fond kojim upravljas. Ako biras fond, BE proverava da li racun fonda ima dovoljno novca.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(Modifier.height(8.dp))
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            item("bank") {
+                val isBank = selected == null
+                Column(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(
+                            if (isBank) MaterialTheme.colorScheme.primary.copy(alpha = 0.20f)
+                            else MaterialTheme.colorScheme.surfaceContainerHigh
+                        )
+                        .clickable { onSelect(null) }
+                        .padding(12.dp)
+                        .width(160.dp)
+                ) {
+                    Text(
+                        "Banka",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        "Hartija ide na bankin racun.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            items(funds, key = { it.id }) { fund ->
+                val isSelected = selected?.id == fund.id
+                Column(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(
+                            if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.20f)
+                            else MaterialTheme.colorScheme.surfaceContainerHigh
+                        )
+                        .clickable { onSelect(fund) }
+                        .padding(12.dp)
+                        .width(220.dp)
+                ) {
+                    Text(
+                        fund.name,
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        "Fond #${fund.id} · ${fund.currency ?: "RSD"}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        "Vrednost: ${MoneyFormatter.formatWithCurrency(fund.totalValue, fund.currency)}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
         }
