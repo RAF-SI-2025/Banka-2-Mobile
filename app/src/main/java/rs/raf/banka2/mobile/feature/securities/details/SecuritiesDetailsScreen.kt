@@ -15,10 +15,16 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -104,16 +110,27 @@ fun SecuritiesDetailsScreen(
                 }
                 if (listing.listingType.equals("STOCK", true) && state.optionChains.isNotEmpty()) {
                     item {
-                        Text(
-                            "Opcije",
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                "Opcije",
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            StrikeRowsStepper(
+                                value = state.strikeRowsAroundPrice,
+                                onChange = viewModel::setStrikeRowFilter
+                            )
+                        }
                     }
                     items(state.optionChains, key = { it.settlementDate ?: it.hashCode().toString() }) { chain ->
                         OptionChainCard(
                             chain = chain,
                             currentPrice = listing.price,
+                            rowsAroundPrice = state.strikeRowsAroundPrice,
                             onExercise = { viewModel.exerciseOption(it) }
                         )
                     }
@@ -214,11 +231,49 @@ private fun StatRow(label: String, value: String) {
 }
 
 @Composable
+private fun StrikeRowsStepper(value: Int, onChange: (Int) -> Unit) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .clip(RoundedCornerShape(10.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+            .padding(horizontal = 4.dp, vertical = 2.dp)
+    ) {
+        IconButton(
+            onClick = { onChange(value - 1) },
+            enabled = value > STRIKE_FILTER_MIN
+        ) {
+            Icon(Icons.Filled.Remove, contentDescription = "Manje strike redova", tint = MaterialTheme.colorScheme.onSurface)
+        }
+        Text(
+            text = "±$value",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            fontWeight = FontWeight.SemiBold
+        )
+        IconButton(
+            onClick = { onChange(value + 1) },
+            enabled = value < STRIKE_FILTER_MAX
+        ) {
+            Icon(Icons.Filled.Add, contentDescription = "Vise strike redova", tint = MaterialTheme.colorScheme.onSurface)
+        }
+    }
+}
+
+@Composable
 private fun OptionChainCard(
     chain: OptionChainDto,
     currentPrice: Double,
+    rowsAroundPrice: Int = DEFAULT_STRIKE_ROWS,
     onExercise: (Long) -> Unit = {}
 ) {
+    // Spec Celina 3 §467: prikazuju se najblizi `rowsAroundPrice` redovi iznad i ispod
+    // currentPrice (Shared Price), sortirano po strike-u rastuce. Ako ima manje od
+    // 2*rowsAroundPrice ukupno, prikazuju se svi.
+    val sortedEntries = remember(chain.entries) { chain.entries.sortedBy { it.strikePrice } }
+    val visibleEntries = remember(sortedEntries, currentPrice, rowsAroundPrice) {
+        pickVisibleStrikeEntries(sortedEntries, rowsAroundPrice, { it.strikePrice }, currentPrice)
+    }
     GlassCard(modifier = Modifier.fillMaxWidth()) {
         Text(
             "Settlement: ${chain.settlementDate ?: "—"}",
@@ -231,7 +286,7 @@ private fun OptionChainCard(
             Text("Strike", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
             Text("Put premija", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        chain.entries.forEach { entry ->
+        visibleEntries.forEach { entry ->
             val isAtPrice = kotlin.math.abs(entry.strikePrice - currentPrice) <= 0.5
             Row(
                 modifier = Modifier

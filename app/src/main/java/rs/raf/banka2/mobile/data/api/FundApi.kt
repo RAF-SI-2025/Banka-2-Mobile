@@ -14,6 +14,7 @@ import rs.raf.banka2.mobile.data.dto.fund.FundPositionDto
 import rs.raf.banka2.mobile.data.dto.fund.FundSummaryDto
 import rs.raf.banka2.mobile.data.dto.fund.FundTransactionDto
 import rs.raf.banka2.mobile.data.dto.fund.FundWithdrawDto
+import rs.raf.banka2.mobile.data.dto.fund.ReassignFundManagerDto
 
 interface FundApi {
 
@@ -51,4 +52,11 @@ interface FundApi {
 
     @GET("funds/bank-positions")
     suspend fun bankPositions(): Response<List<FundPositionDto>>
+
+    /** P1.2: prebaci vlasnistvo fonda na drugog supervizora (admin/supervisor only). */
+    @POST("funds/{id}/reassign-manager")
+    suspend fun reassignManager(
+        @Path("id") fundId: Long,
+        @Body body: ReassignFundManagerDto
+    ): Response<FundDetailDto>
 }

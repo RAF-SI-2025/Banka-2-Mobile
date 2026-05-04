@@ -79,6 +79,10 @@ class AuthRepository @Inject constructor(
             }
 
     suspend fun logout() {
+        // Opciono.1: server-side blacklist tokena pre brisanja lokalno.
+        // Greske ignorisemo (npr. token vec expired, ili offline) — klijent
+        // svakako mora da obrise lokalne tokene jer je korisnik kliknuo logout.
+        runCatching { authApi.logout() }
         sessionManager.logout()
     }
 

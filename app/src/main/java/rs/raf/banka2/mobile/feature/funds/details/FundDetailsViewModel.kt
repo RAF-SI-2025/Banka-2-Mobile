@@ -13,8 +13,11 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import rs.raf.banka2.mobile.core.auth.SessionManager
 import rs.raf.banka2.mobile.core.auth.SessionState
+import rs.raf.banka2.mobile.core.network.safeApiCall
 import rs.raf.banka2.mobile.core.network.ApiResult
+import rs.raf.banka2.mobile.data.api.EmployeeAdminApi
 import rs.raf.banka2.mobile.data.dto.account.AccountDto
+import rs.raf.banka2.mobile.data.dto.common.EmployeeDto
 import rs.raf.banka2.mobile.data.dto.fund.FundDetailDto
 import rs.raf.banka2.mobile.data.dto.fund.FundPerformancePointDto
 import rs.raf.banka2.mobile.data.dto.fund.FundPositionDto
@@ -27,6 +30,7 @@ class FundDetailsViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val fundRepository: FundRepository,
     private val accountRepository: AccountRepository,
+    private val employeeAdminApi: EmployeeAdminApi,
     sessionManager: SessionManager
 ) : ViewModel() {
 
@@ -123,6 +127,53 @@ class FundDetailsViewModel @Inject constructor(
             else -> Unit
         }
     }
+
+    /**
+     * P1.2: ucitaj listu kandidata (zaposleni sa SUPERVISOR ili ADMIN permisijom)
+     * koje supervizor moze da naznaci kao novog menadzera fonda. Trenutni
+     * menadzer se filtrira van liste.
+     */
+    fun openReassignDialog() = viewModelScope.launch {
+        _state.update { it.copy(reassignDialogVisible = true, reassignError = null) }
+        when (val result = safeApiCall { employeeAdminApi.list(page = 0, limit = 200) }) {
+            is ApiResult.Success -> {
+                val candidates = result.data.content.filter { emp ->
+                    val perms = emp.permissions.orEmpty().map { it.uppercase() }
+                    val isSupervisorOrAdmin = perms.any { it == "SUPERVISOR" || it == "ADMIN" }
+                    isSupervisorOrAdmin && emp.id != _state.value.fund?.managerId
+                }
+                _state.update { it.copy(reassignCandidates = candidates) }
+            }
+            is ApiResult.Failure -> _state.update { it.copy(reassignError = result.error.message) }
+            ApiResult.Loading -> Unit
+        }
+    }
+
+    fun closeReassignDialog() = _state.update {
+        it.copy(reassignDialogVisible = false, reassignError = null, reassignCandidates = emptyList())
+    }
+
+    fun reassignManager(newManagerEmployeeId: Long) = viewModelScope.launch {
+        _state.update { it.copy(submitting = true, reassignError = null) }
+        when (val result = fundRepository.reassignManager(fundId, newManagerEmployeeId)) {
+            is ApiResult.Success -> {
+                _state.update {
+                    it.copy(
+                        submitting = false,
+                        reassignDialogVisible = false,
+                        reassignCandidates = emptyList(),
+                        fund = result.data
+                    )
+                }
+                _events.send(FundDetailsEvent.Toast("Menadzer je prebacen."))
+                load()
+            }
+            is ApiResult.Failure -> _state.update {
+                it.copy(submitting = false, reassignError = result.error.message)
+            }
+            ApiResult.Loading -> Unit
+        }
+    }
 }
 
 data class FundDetailsState(
@@ -133,7 +184,10 @@ data class FundDetailsState(
     val accounts: List<AccountDto> = emptyList(),
     val isSupervisor: Boolean = false,
     val submitting: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
+    val reassignDialogVisible: Boolean = false,
+    val reassignCandidates: List<EmployeeDto> = emptyList(),
+    val reassignError: String? = null
 )
 
 sealed interface FundDetailsEvent {

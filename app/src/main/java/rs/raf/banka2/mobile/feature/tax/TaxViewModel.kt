@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import rs.raf.banka2.mobile.core.network.ApiResult
+import rs.raf.banka2.mobile.data.dto.tax.TaxBreakdownItemDto
 import rs.raf.banka2.mobile.data.dto.tax.TaxRecordDto
 import rs.raf.banka2.mobile.data.repository.TaxRepository
 import javax.inject.Inject
@@ -49,12 +50,55 @@ class TaxViewModel @Inject constructor(
             ApiResult.Loading -> Unit
         }
     }
+
+    /**
+     * Spec Celina 3 §516-518: ucitaj per-listing breakdown za izabranog korisnika.
+     * UI prikazuje modal sa listom hartija koje su doprinele profitu/gubitku.
+     */
+    fun openBreakdown(record: TaxRecordDto) = viewModelScope.launch {
+        val userId = record.userId
+        val userType = record.userType
+        if (userId == null || userType.isNullOrBlank()) {
+            _state.update { it.copy(breakdownError = "Nema validnog userId/userType za breakdown.") }
+            return@launch
+        }
+        _state.update {
+            it.copy(
+                breakdownTarget = record,
+                breakdownLoading = true,
+                breakdownError = null,
+                breakdownItems = emptyList()
+            )
+        }
+        when (val result = repository.getBreakdown(userId, userType)) {
+            is ApiResult.Success -> _state.update {
+                it.copy(breakdownLoading = false, breakdownItems = result.data)
+            }
+            is ApiResult.Failure -> _state.update {
+                it.copy(breakdownLoading = false, breakdownError = result.error.message)
+            }
+            ApiResult.Loading -> Unit
+        }
+    }
+
+    fun closeBreakdown() = _state.update {
+        it.copy(
+            breakdownTarget = null,
+            breakdownItems = emptyList(),
+            breakdownError = null,
+            breakdownLoading = false
+        )
+    }
 }
 
 data class TaxState(
     val loading: Boolean = false,
     val records: List<TaxRecordDto> = emptyList(),
-    val error: String? = null
+    val error: String? = null,
+    val breakdownTarget: TaxRecordDto? = null,
+    val breakdownLoading: Boolean = false,
+    val breakdownItems: List<TaxBreakdownItemDto> = emptyList(),
+    val breakdownError: String? = null
 )
 
 sealed interface TaxEvent {

@@ -62,7 +62,9 @@ class OtcDiscoveryViewModel @Inject constructor(
             premium = premium,
             settlementDate = settlementDate,
             foreign = listing.foreign,
-            bankRoutingNumber = listing.bankRoutingNumber
+            bankRoutingNumber = listing.bankRoutingNumber,
+            foreignSellerPublicId = listing.foreignSellerPublicId,
+            foreignListingTicker = if (listing.foreign) listing.ticker else null
         )
         _state.update { it.copy(submitting = true) }
         when (val result = repository.createOffer(_state.value.scope.inter, request)) {

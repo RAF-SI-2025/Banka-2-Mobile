@@ -12,7 +12,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Sell
@@ -47,6 +50,7 @@ import rs.raf.banka2.mobile.core.ui.components.ErrorBanner
 import rs.raf.banka2.mobile.core.ui.components.GlassCard
 import rs.raf.banka2.mobile.core.ui.components.SecondaryButton
 import rs.raf.banka2.mobile.data.dto.portfolio.PortfolioItemDto
+import rs.raf.banka2.mobile.data.dto.tax.TaxBreakdownItemDto
 
 @Composable
 fun PortfolioScreen(
@@ -107,12 +111,33 @@ fun PortfolioScreen(
                                     color = if (summary.totalProfit >= 0) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error
                                 )
                             }
-                            summary.taxOwed?.let { tax ->
-                                Column(horizontalAlignment = Alignment.End) {
+                            // Spec Celina 3 §516-518 (P2.4): klik otvara per-listing breakdown.
+                            Column(
+                                horizontalAlignment = Alignment.End,
+                                modifier = Modifier.clickable { viewModel.toggleTaxBreakdown() }
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
                                     Text("Procenjeni porez (15%)", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                    Text(MoneyFormatter.format(tax, 2), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
+                                    Spacer(Modifier.height(2.dp))
+                                    Icon(
+                                        if (state.taxBreakdownExpanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                                        contentDescription = if (state.taxBreakdownExpanded) "Sakrij" else "Prikazi",
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
                                 }
+                                Text(
+                                    MoneyFormatter.format(summary.taxOwed ?: 0.0, 2),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
                             }
+                        }
+                        if (state.taxBreakdownExpanded) {
+                            Spacer(Modifier.height(12.dp))
+                            TaxBreakdownExpansion(
+                                items = state.taxBreakdown,
+                                error = state.taxBreakdownError
+                            )
                         }
                     }
                 }
@@ -146,6 +171,57 @@ fun PortfolioScreen(
                 publicTarget = null
             }
         )
+    }
+}
+
+@Composable
+private fun TaxBreakdownExpansion(
+    items: List<TaxBreakdownItemDto>,
+    error: String?
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
+        Text(
+            "Po hartiji (Spec Celina 3 §516-518)",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        when {
+            error != null -> Text(error, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+            items.isEmpty() -> Text(
+                "Nema oporezivih dobitaka u tekucem mesecu.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            else -> items.forEach { item ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(item.ticker ?: "—", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
+                        Text(
+                            "Profit native: ${MoneyFormatter.formatWithCurrency(item.profitNative ?: 0.0, item.listingCurrency)}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text(
+                            "${MoneyFormatter.format(item.profitRsd ?: 0.0, 2)} RSD",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = if ((item.profitRsd ?: 0.0) >= 0) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error
+                        )
+                        Text(
+                            "Porez: ${MoneyFormatter.format(item.taxOwed ?: 0.0, 2)}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 

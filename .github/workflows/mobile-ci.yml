@@ -12,10 +12,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up JDK 17
+      # AGP 9.2 + Kotlin 2.3.21 + Gradle 9.4 + jvmTarget 21 — JDK 21 je minimum za
+      # build, jer kotlin compilerOptions.jvmTarget = JVM_21 zahteva JDK 21+ za
+      # generisanje 21-bytecode-a. Ako Luka u libs.versions.toml bumpne jvmTarget
+      # na 25 (kad AGP/desugar to podrze), ovo treba da skoci na 25.
+      - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
-          java-version: '17'
+          java-version: '21'
           distribution: temurin
 
       - name: Cache Gradle

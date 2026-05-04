@@ -94,3 +94,9 @@ data class FundWithdrawDto(
     val amount: Double? = null,
     val withdrawAll: Boolean = false
 )
+
+/** P1.2: telo zahteva za prebacivanje vlasnistva fonda na drugog menadzera. */
+@JsonClass(generateAdapter = true)
+data class ReassignFundManagerDto(
+    val newManagerEmployeeId: Long
+)

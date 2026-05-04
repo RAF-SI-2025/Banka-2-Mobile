@@ -52,10 +52,35 @@ class LoginViewModel @Inject constructor(
                     _events.send(LoginEvent.LoggedIn(result.data.role))
                 }
                 is ApiResult.Failure -> _state.update {
-                    it.copy(isSubmitting = false, generalError = result.error.message)
+                    // Opciono.2: prepoznaj BE account-lockout poruku ("Account temporarily
+                    // locked. Try again in N seconds.") i prevedi je u serpski UX tekst.
+                    val raw = result.error.message
+                    it.copy(isSubmitting = false, generalError = mapLoginError(raw))
                 }
                 ApiResult.Loading -> Unit
             }
+        }
+    }
+
+    /**
+     * Opciono.2: BE vraca poruku oblika "Account temporarily locked. Try again
+     * in N seconds." kad je 5+ uzastopno pogresnih login pokusaja okidalo
+     * `AuthRateLimitFilter`/lockout logiku. UI prikazuje serpski equivalent
+     * sa minutama umesto sekundi (zaokruzeno na 1 min minimum).
+     */
+    private fun mapLoginError(raw: String?): String? {
+        if (raw == null) return null
+        if (!raw.startsWith("Account temporarily locked", ignoreCase = true)) return raw
+        val seconds = Regex("(\\d+)\\s*seconds?", RegexOption.IGNORE_CASE)
+            .find(raw)
+            ?.groupValues
+            ?.getOrNull(1)
+            ?.toIntOrNull()
+        val minutes = seconds?.let { ((it + 59) / 60).coerceAtLeast(1) }
+        return if (minutes != null) {
+            "Nalog je privremeno zakljucan. Pokusajte ponovo za $minutes min."
+        } else {
+            "Nalog je privremeno zakljucan zbog vise neuspesnih pokusaja. Pokusajte kasnije."
         }
     }
 

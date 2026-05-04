@@ -11,6 +11,7 @@ import rs.raf.banka2.mobile.data.dto.fund.FundPositionDto
 import rs.raf.banka2.mobile.data.dto.fund.FundSummaryDto
 import rs.raf.banka2.mobile.data.dto.fund.FundTransactionDto
 import rs.raf.banka2.mobile.data.dto.fund.FundWithdrawDto
+import rs.raf.banka2.mobile.data.dto.fund.ReassignFundManagerDto
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -50,4 +51,7 @@ class FundRepository @Inject constructor(
     suspend fun myPositions(): ApiResult<List<FundPositionDto>> = safeApiCall { api.myPositions() }
 
     suspend fun bankPositions(): ApiResult<List<FundPositionDto>> = safeApiCall { api.bankPositions() }
+
+    suspend fun reassignManager(fundId: Long, newManagerEmployeeId: Long): ApiResult<FundDetailDto> =
+        safeApiCall { api.reassignManager(fundId, ReassignFundManagerDto(newManagerEmployeeId)) }
 }

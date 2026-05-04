@@ -38,6 +38,13 @@ class SecuritiesDetailsViewModel @Inject constructor(
         viewModelScope.launch { fetchHistory(period) }
     }
 
+    fun setStrikeRowFilter(rows: Int) {
+        // Spec Celina 3 §467: korisnik bira broj strike redova iznad i ispod Shared Price.
+        // Min 1 da uvek bar 1 red bude vidljiv, max 20 da UI ne ode u beskraj.
+        val clamped = rows.coerceIn(STRIKE_FILTER_MIN, STRIKE_FILTER_MAX)
+        _state.update { it.copy(strikeRowsAroundPrice = clamped) }
+    }
+
     fun load() {
         viewModelScope.launch { fetchListing() }
         viewModelScope.launch { fetchHistory(_state.value.period) }
@@ -91,6 +98,28 @@ class SecuritiesDetailsViewModel @Inject constructor(
     }
 }
 
+/**
+ * Spec Celina 3 §467: filtrira strike redove tako da se prikaze `rowsAroundPrice`
+ * iznad i ispod `currentPrice` (Shared Price). Ako je ukupan broj <= 2*rows,
+ * vraca sve. Ulaz mora biti sortiran po strike-u rastuce.
+ *
+ * Pure funkcija — odvojena od composable-a radi unit-test pokrivanja.
+ */
+fun <T> pickVisibleStrikeEntries(
+    sortedByStrike: List<T>,
+    rowsAroundPrice: Int,
+    strikeOf: (T) -> Double,
+    currentPrice: Double
+): List<T> {
+    if (rowsAroundPrice <= 0) return emptyList()
+    if (sortedByStrike.size <= rowsAroundPrice * 2) return sortedByStrike
+    val pivot = sortedByStrike.indexOfFirst { strikeOf(it) >= currentPrice }
+        .let { if (it < 0) sortedByStrike.lastIndex else it }
+    val from = (pivot - rowsAroundPrice).coerceAtLeast(0)
+    val to = (pivot + rowsAroundPrice).coerceAtMost(sortedByStrike.size - 1)
+    return sortedByStrike.subList(from, to + 1)
+}
+
 enum class ChartPeriod(val apiValue: String, val label: String) {
     Day("DAY", "1D"),
     Week("WEEK", "1N"),
@@ -104,8 +133,13 @@ data class SecuritiesDetailsState(
     val history: List<ListingDailyPriceDto> = emptyList(),
     val optionChains: List<OptionChainDto> = emptyList(),
     val period: ChartPeriod = ChartPeriod.Month,
+    val strikeRowsAroundPrice: Int = DEFAULT_STRIKE_ROWS,
     val loading: Boolean = false,
     val exercising: Boolean = false,
     val exerciseSuccess: String? = null,
     val error: String? = null
 )
+
+const val DEFAULT_STRIKE_ROWS: Int = 5
+const val STRIKE_FILTER_MIN: Int = 1
+const val STRIKE_FILTER_MAX: Int = 20

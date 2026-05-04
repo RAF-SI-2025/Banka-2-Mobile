@@ -1,3 +1,5 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -42,19 +44,14 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
+        // Java 21 je trenutno najjaca verzija koju AGP 9.2 + Gradle 9.4 + Android
+        // desugaring (`desugar_jdk_libs` 2.1.6) potpuno podrzavaju za Android target.
+        // Java 25 radi na BE-u, ali Android ART runtime sa minSdk 24 jos uvek nema
+        // desugar pravila za Java 22+ feature-e (Pattern matching, virtual threads,
+        // sealed types u JDK 25 form-i). Cim AGP/desugar to podrze, prebacujemo na 25.
+        sourceCompatibility = JavaVersion.VERSION_21
+        targetCompatibility = JavaVersion.VERSION_21
         isCoreLibraryDesugaringEnabled = true
-    }
-
-    kotlinOptions {
-        jvmTarget = "17"
-        freeCompilerArgs += listOf(
-            "-opt-in=kotlin.RequiresOptIn",
-            "-opt-in=androidx.compose.material3.ExperimentalMaterial3Api",
-            "-opt-in=androidx.compose.foundation.ExperimentalFoundationApi",
-            "-opt-in=androidx.compose.animation.ExperimentalAnimationApi"
-        )
     }
 
     buildFeatures {
@@ -81,6 +78,20 @@ android {
         )
         warningsAsErrors = true
         abortOnError = true
+    }
+}
+
+// Kotlin compiler options — AGP 9.0+ deprecated `android { kotlinOptions { } }` blok,
+// preporuka iz https://kotl.in/u1r8ln je top-level `kotlin { compilerOptions { } }`.
+kotlin {
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_21)
+        freeCompilerArgs.addAll(
+            "-opt-in=kotlin.RequiresOptIn",
+            "-opt-in=androidx.compose.material3.ExperimentalMaterial3Api",
+            "-opt-in=androidx.compose.foundation.ExperimentalFoundationApi",
+            "-opt-in=androidx.compose.animation.ExperimentalAnimationApi"
+        )
     }
 }
 

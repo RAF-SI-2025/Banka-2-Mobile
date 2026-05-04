@@ -126,7 +126,7 @@ class OtcOffersAndContractsViewModel @Inject constructor(
     }
 
     fun acceptOffer(offer: OtcOfferDto, buyerAccountId: Long?) = viewModelScope.launch {
-        when (val result = repository.accept(offer.foreign, offer.id, buyerAccountId)) {
+        when (val result = repository.accept(offer.foreign, offer, buyerAccountId)) {
             is ApiResult.Success -> {
                 _events.send(OtcOffersAndContractsEvent.Toast("Ponuda prihvacena."))
                 refresh()
@@ -137,7 +137,7 @@ class OtcOffersAndContractsViewModel @Inject constructor(
     }
 
     fun declineOffer(offer: OtcOfferDto) = viewModelScope.launch {
-        when (val result = repository.decline(offer.foreign, offer.id)) {
+        when (val result = repository.decline(offer.foreign, offer)) {
             is ApiResult.Success -> {
                 _events.send(OtcOffersAndContractsEvent.Toast("Ponuda odbijena."))
                 refresh()
@@ -155,7 +155,7 @@ class OtcOffersAndContractsViewModel @Inject constructor(
         settlementDate: String
     ) = viewModelScope.launch {
         val body = CounterOtcOfferDto(quantity, pricePerStock, premium, settlementDate)
-        when (val result = repository.counter(offer.foreign, offer.id, body)) {
+        when (val result = repository.counter(offer.foreign, offer, body)) {
             is ApiResult.Success -> {
                 _events.send(OtcOffersAndContractsEvent.Toast("Kontraponuda poslata."))
                 refresh()
@@ -166,8 +166,9 @@ class OtcOffersAndContractsViewModel @Inject constructor(
     }
 
     /**
-     * Pokrece exercise. Za inter-bank ugovore prati SAGA fazu kroz polling.
-     * Za intra-bank odmah vrati COMMITTED jer SAGA nije potrebna.
+     * Pokrece exercise. Za inter-bank ugovore prati ishod kroz polling
+     * `listMyInterContracts` (BE wrapper ne ekspozira pojedinacne SAGA faze).
+     * Za intra-bank koristi `/otc/contracts/{id}/saga-status` endpoint.
      */
     fun startExercise(contract: OtcContractDto, buyerAccountId: Long?) {
         _state.update {
@@ -181,29 +182,23 @@ class OtcOffersAndContractsViewModel @Inject constructor(
             )
         }
         viewModelScope.launch {
-            when (val result = repository.exercise(contract.foreign, contract.id, buyerAccountId)) {
+            when (val result = repository.exercise(contract.foreign, contract, buyerAccountId)) {
                 is ApiResult.Success -> {
-                    if (!contract.foreign) {
-                        _state.update {
-                            it.copy(
-                                exerciseInProgress = it.exerciseInProgress?.copy(
-                                    phase = "COMMITTED",
-                                    message = "Ugovor je izvrsen."
-                                )
-                            )
-                        }
+                    if (contract.foreign) {
+                        // Inter-bank: poll listMyInterContracts po foreignId dok status ne pređe u terminal.
+                        contract.foreignId?.let { pollInterContract(it) }
+                            ?: markAborted("Inter-bank ugovor nema foreignId — ne mogu pratiti SAGA status.")
                     } else {
-                        pollSaga(contract.id)
+                        // Intra-bank: ako BE vec vraca EXERCISED, prikazi to; inace polluj saga-status.
+                        val returnedStatus = result.data.status
+                        if (returnedStatus.equals("EXERCISED", true) || returnedStatus.equals("COMMITTED", true)) {
+                            markCommitted()
+                        } else {
+                            pollIntraSaga(contract.id)
+                        }
                     }
                 }
-                is ApiResult.Failure -> _state.update {
-                    it.copy(
-                        exerciseInProgress = it.exerciseInProgress?.copy(
-                            phase = "ABORTED",
-                            message = result.error.message
-                        )
-                    )
-                }
+                is ApiResult.Failure -> markAborted(result.error.message)
                 ApiResult.Loading -> Unit
             }
         }
@@ -214,9 +209,31 @@ class OtcOffersAndContractsViewModel @Inject constructor(
         refresh()
     }
 
-    private suspend fun pollSaga(contractId: Long) {
-        repeat(40) { tick ->
-            when (val result = repository.sagaStatus(contractId)) {
+    private fun markCommitted() {
+        _state.update {
+            it.copy(
+                exerciseInProgress = it.exerciseInProgress?.copy(
+                    phase = "COMMITTED",
+                    message = "Ugovor je izvrsen."
+                )
+            )
+        }
+    }
+
+    private fun markAborted(message: String?) {
+        _state.update {
+            it.copy(
+                exerciseInProgress = it.exerciseInProgress?.copy(
+                    phase = "ABORTED",
+                    message = message
+                )
+            )
+        }
+    }
+
+    private suspend fun pollIntraSaga(contractId: Long) {
+        repeat(40) { _ ->
+            when (val result = repository.sagaStatusIntra(contractId)) {
                 is ApiResult.Success -> {
                     val status: SagaStatusDto = result.data
                     _state.update {
@@ -241,6 +258,69 @@ class OtcOffersAndContractsViewModel @Inject constructor(
                 )
             )
         }
+    }
+
+    private suspend fun pollInterContract(foreignId: String) {
+        // BE wrapper ne ekspozira pojedinacne SAGA faze, pa imitiramo progress
+        // kroz indeks polling-a (faza se aproksimira) dok status contract-a
+        // ne predje u EXERCISED (uspeh) ili ABORTED/EXPIRED (neuspeh).
+        repeat(40) { tick ->
+            when (val result = repository.pollInterContractStatus(foreignId)) {
+                is ApiResult.Success -> {
+                    val status = result.data
+                    val phase = mapInterContractStatusToPhase(status, tick)
+                    _state.update {
+                        it.copy(
+                            exerciseInProgress = it.exerciseInProgress?.copy(
+                                phase = phase,
+                                message = interStatusMessage(status, tick)
+                            )
+                        )
+                    }
+                    when (status.uppercase()) {
+                        "EXERCISED" -> { markCommitted(); return }
+                        "ABORTED", "EXPIRED" -> { markAborted("Transakcija nije uspela ($status)."); return }
+                    }
+                }
+                else -> Unit
+            }
+            delay(2000L)
+        }
+        _state.update {
+            it.copy(
+                exerciseInProgress = it.exerciseInProgress?.copy(
+                    phase = "STUCK",
+                    message = "SAGA nije potvrdjena u predvidjenom vremenu — banka ce dovrsiti naknadno."
+                )
+            )
+        }
+    }
+
+    /**
+     * Aproksimacija faze za inter-bank exercise (5 koraka iz spec-a). BE wrapper
+     * ne salje stvarnu fazu pa progress prikazujemo kroz tick brojac (svaki
+     * tick je 2 sekunde, faze se menjaju otprilike svakih 4 sekunde).
+     */
+    private fun mapInterContractStatusToPhase(status: String, tick: Int): String {
+        return when (status.uppercase()) {
+            "EXERCISED" -> "COMMITTED"
+            "ABORTED", "EXPIRED" -> "ABORTED"
+            else -> when {
+                tick < 2 -> "RESERVE_FUNDS"
+                tick < 4 -> "RESERVE_SHARES"
+                tick < 6 -> "TRANSFER_FUNDS"
+                tick < 8 -> "TRANSFER_OWNERSHIP"
+                else -> "INITIATED"
+            }
+        }
+    }
+
+    private fun interStatusMessage(status: String, tick: Int): String? = when (status.uppercase()) {
+        "EXERCISED" -> "Ugovor je uspesno izvrsen."
+        "ABORTED" -> "Transakcija je opozvana."
+        "EXPIRED" -> "Ugovor je istekao pre nego sto je SAGA zavrsena."
+        "ACTIVE" -> "Cekam da partner banka dovrsi SAGA korak ${tick + 1}/40..."
+        else -> null
     }
 
     private companion object {

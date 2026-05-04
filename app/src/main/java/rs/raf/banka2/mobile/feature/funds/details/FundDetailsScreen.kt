@@ -46,6 +46,7 @@ import rs.raf.banka2.mobile.core.ui.components.ErrorBanner
 import rs.raf.banka2.mobile.core.ui.components.GlassCard
 import rs.raf.banka2.mobile.core.ui.components.PrimaryButton
 import rs.raf.banka2.mobile.data.dto.account.AccountDto
+import rs.raf.banka2.mobile.data.dto.common.EmployeeDto
 
 @Composable
 fun FundDetailsScreen(
@@ -166,8 +167,29 @@ fun FundDetailsScreen(
                         }
                     }
                 }
+                if (state.isSupervisor) {
+                    // P1.2: Promeni menadzera fonda. Vidljivo samo za supervizore/admine.
+                    item {
+                        rs.raf.banka2.mobile.core.ui.components.SecondaryButton(
+                            text = "Promeni menadzera",
+                            onClick = viewModel::openReassignDialog,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
             }
         }
+    }
+
+    if (state.reassignDialogVisible) {
+        ReassignManagerDialog(
+            currentManagerName = state.fund?.managerName,
+            candidates = state.reassignCandidates,
+            error = state.reassignError,
+            isLoading = state.submitting,
+            onDismiss = viewModel::closeReassignDialog,
+            onConfirm = { employee -> viewModel.reassignManager(employee.id) }
+        )
     }
 
     if (showInvest) {
@@ -279,6 +301,83 @@ private fun WithdrawDialog(
             }, enabled = canSubmit) { Text("Povuci") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Otkazi") } }
+    )
+}
+
+@Composable
+private fun ReassignManagerDialog(
+    currentManagerName: String?,
+    candidates: List<EmployeeDto>,
+    error: String?,
+    isLoading: Boolean,
+    onDismiss: () -> Unit,
+    onConfirm: (EmployeeDto) -> Unit
+) {
+    var selected by remember { mutableStateOf<EmployeeDto?>(null) }
+    val canSubmit = selected != null && !isLoading
+
+    AlertDialog(
+        onDismissRequest = { if (!isLoading) onDismiss() },
+        title = { Text("Promena menadzera fonda") },
+        text = {
+            Column {
+                Text(
+                    "Trenutni menadzer: ${currentManagerName ?: "—"}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.height(12.dp))
+                if (error != null) {
+                    Text(error, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+                    Spacer(Modifier.height(8.dp))
+                }
+                if (candidates.isEmpty()) {
+                    Text(
+                        "Nema drugih supervizora/admina dostupnih.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                } else {
+                    LazyColumn(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.height(280.dp)) {
+                        items(candidates, key = { it.id }) { emp ->
+                            val isSelected = selected?.id == emp.id
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(
+                                        if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)
+                                        else MaterialTheme.colorScheme.surfaceContainerHigh
+                                    )
+                                    .clickable { selected = emp }
+                                    .padding(10.dp)
+                            ) {
+                                Text(
+                                    "${emp.firstName.orEmpty()} ${emp.lastName.orEmpty()}".trim().ifBlank { emp.email },
+                                    style = MaterialTheme.typography.titleSmall,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
+                                )
+                                Text(
+                                    emp.email,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                emp.position?.takeIf { it.isNotBlank() }?.let {
+                                    Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { selected?.let(onConfirm) }, enabled = canSubmit) {
+                Text(if (isLoading) "Saljem..." else "Prebaci")
+            }
+        },
+        dismissButton = { TextButton(onClick = onDismiss, enabled = !isLoading) { Text("Otkazi") } }
     )
 }
 

@@ -27,4 +27,12 @@ interface AuthApi {
 
     @POST("auth-employee/activate")
     suspend fun activateEmployee(@Body body: ActivateAccountRequest): Response<MessageResponse>
+
+    /**
+     * Server-side blacklisting trenutnog access tokena (Opciono.1). Bearer header
+     * se automatski dodaje kroz `AuthInterceptor`. Telo odgovora se ignorise —
+     * client svakako brise lokalne tokene posle ovog poziva.
+     */
+    @POST("auth/logout")
+    suspend fun logout(): Response<MessageResponse>
 }

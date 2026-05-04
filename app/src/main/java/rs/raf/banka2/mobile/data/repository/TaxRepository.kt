@@ -4,6 +4,7 @@ import rs.raf.banka2.mobile.core.network.ApiResult
 import rs.raf.banka2.mobile.core.network.map
 import rs.raf.banka2.mobile.core.network.safeApiCall
 import rs.raf.banka2.mobile.data.api.TaxApi
+import rs.raf.banka2.mobile.data.dto.tax.TaxBreakdownItemDto
 import rs.raf.banka2.mobile.data.dto.tax.TaxRecordDto
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -18,4 +19,10 @@ class TaxRepository @Inject constructor(
     suspend fun myRecord(): ApiResult<TaxRecordDto> = safeApiCall { api.myRecord() }
 
     suspend fun calculate(): ApiResult<Unit> = safeApiCall { api.calculate() }.map { }
+
+    suspend fun getBreakdown(userId: Long, userType: String): ApiResult<List<TaxBreakdownItemDto>> =
+        safeApiCall { api.getBreakdown(userId, userType) }
+
+    suspend fun getMyBreakdown(): ApiResult<List<TaxBreakdownItemDto>> =
+        safeApiCall { api.getMyBreakdown() }
 }
