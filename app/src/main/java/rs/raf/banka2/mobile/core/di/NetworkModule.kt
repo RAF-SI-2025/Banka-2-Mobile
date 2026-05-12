@@ -33,6 +33,7 @@ import rs.raf.banka2.mobile.data.api.PaymentApi
 import rs.raf.banka2.mobile.data.api.PortfolioApi
 import rs.raf.banka2.mobile.data.api.ProfitBankApi
 import rs.raf.banka2.mobile.data.api.RecipientApi
+import rs.raf.banka2.mobile.data.api.SavingsApi
 import rs.raf.banka2.mobile.data.api.TaxApi
 import rs.raf.banka2.mobile.data.api.TransferApi
 import java.util.concurrent.TimeUnit
@@ -189,6 +190,11 @@ object NetworkModule {
     @Singleton
     fun provideClientApi(retrofit: Retrofit): ClientApi =
         retrofit.create(ClientApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideSavingsApi(retrofit: Retrofit): SavingsApi =
+        retrofit.create(SavingsApi::class.java)
 
     const val REFRESH_CLIENT = "refresh-okhttp"
 }
