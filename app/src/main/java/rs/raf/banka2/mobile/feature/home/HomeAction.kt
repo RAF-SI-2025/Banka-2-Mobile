@@ -32,4 +32,5 @@ sealed interface HomeAction {
     data object OpenEmployeeLoanRequests : HomeAction
     data object OpenEmployeeAllLoans : HomeAction
     data object OpenMarginCreate : HomeAction
+    data object OpenSavings : HomeAction
 }

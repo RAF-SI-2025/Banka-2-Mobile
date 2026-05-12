@@ -82,6 +82,11 @@ object Routes {
     // ─── Mobile-specific ──────────────────────────────────
     @Serializable data object Otp
 
+    // ─── Stednja (Celina 2 extra) ─────────────────────────
+    @Serializable data object SavingsList
+    @Serializable data object SavingsNewDeposit
+    @Serializable data class SavingsDetails(val depositId: Long)
+
     // ─── Klijentski extra ekrani ──────────────────────────
     @Serializable data class LoanDetailsRoute(val loanId: Long)
 

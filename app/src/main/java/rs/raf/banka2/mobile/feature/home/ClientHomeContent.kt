@@ -326,7 +326,8 @@ private fun ClientQuickActions(onNavigate: (HomeAction) -> Unit) {
         QuickActionItem("OTC", "Trgovina", Icons.Filled.People, HomeAction.OpenOtc),
         QuickActionItem("Fondovi", "Investicioni", Icons.Filled.AccountBalance, HomeAction.OpenFunds),
         QuickActionItem("Marzni", "Margin racun", Icons.Filled.AccountBalance, HomeAction.OpenMargin),
-        QuickActionItem("Istorija", "Sve transakcije", Icons.Filled.Receipt, HomeAction.OpenPaymentHistory)
+        QuickActionItem("Istorija", "Sve transakcije", Icons.Filled.Receipt, HomeAction.OpenPaymentHistory),
+        QuickActionItem("Stednja", "Oroceni depoziti", Icons.Filled.AccountBalanceWallet, HomeAction.OpenSavings)
     )
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         items.chunked(4).forEach { row ->

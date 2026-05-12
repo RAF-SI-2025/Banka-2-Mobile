@@ -61,6 +61,9 @@ import rs.raf.banka2.mobile.feature.securities.details.SecuritiesDetailsScreen
 import rs.raf.banka2.mobile.feature.securities.list.SecuritiesListScreen
 import rs.raf.banka2.mobile.feature.splash.SplashScreen
 import rs.raf.banka2.mobile.feature.tax.TaxScreen
+import rs.raf.banka2.mobile.feature.savings.details.SavingsDetailsScreen
+import rs.raf.banka2.mobile.feature.savings.list.SavingsListScreen
+import rs.raf.banka2.mobile.feature.savings.newdeposit.SavingsNewDepositScreen
 import rs.raf.banka2.mobile.feature.transfers.create.NewTransferScreen
 import rs.raf.banka2.mobile.feature.transfers.history.TransferHistoryScreen
 
@@ -214,6 +217,26 @@ private fun androidx.navigation.NavGraphBuilder.addClientRoutes(
     }
     composable<Routes.LoanDetailsRoute> {
         LoanDetailsScreen(onBack = { navController.popBackStack() })
+    }
+    composable<Routes.SavingsList> {
+        SavingsListScreen(
+            onBack = { navController.popBackStack() },
+            onNewDeposit = { navController.navigate(Routes.SavingsNewDeposit) },
+            onDepositClick = { id -> navController.navigate(Routes.SavingsDetails(id)) }
+        )
+    }
+    composable<Routes.SavingsNewDeposit> {
+        SavingsNewDepositScreen(
+            onBack = { navController.popBackStack() },
+            onSuccess = {
+                navController.navigate(Routes.SavingsList) {
+                    popUpTo(Routes.SavingsNewDeposit) { inclusive = true }
+                }
+            }
+        )
+    }
+    composable<Routes.SavingsDetails> {
+        SavingsDetailsScreen(onBack = { navController.popBackStack() })
     }
     composable<Routes.MarginAccounts> {
         MarginScreen(
@@ -400,5 +423,6 @@ private fun NavHostController.handleHomeAction(action: HomeAction) {
         HomeAction.OpenEmployeeLoanRequests -> navigate(Routes.EmployeeLoanRequests)
         HomeAction.OpenEmployeeAllLoans -> navigate(Routes.EmployeeAllLoans)
         HomeAction.OpenMarginCreate -> navigate(Routes.MarginAccountCreate)
+        HomeAction.OpenSavings -> navigate(Routes.SavingsList)
     }
 }
