@@ -21,11 +21,12 @@ class AuthInterceptor @Inject constructor(
         val original = chain.request()
         val path = original.url.encodedPath
 
-        // Sve auth rute prolaze bez Bearer-a:
-        //  - /auth/* (login, refresh, password_reset, logout)
-        //  - /auth-employee/activate (POST aktivacija)
-        //  - /auth-employee/activation-token/{token}/status (Sc 9 pre-check, 12.05.2026)
-        if (path in BYPASS_PATHS || path.startsWith("/auth/") || path.startsWith("/auth-employee/")) {
+        // SEC-06 / ME-AUTH-01: exact-match bypass listu — NIKAD ne sme da koristimo
+        // startsWith("/auth/") jer to puca server-side JWT blacklist na /auth/logout
+        // (logout mora ici sa Bearer header-om da BE moze da ga blacklist-uje).
+        // Slicno, /auth-employee/activation-token/{token}/status je javni pre-check
+        // a /auth-employee/activate prima token kroz body, ne kroz Authorization.
+        if (path in BYPASS_PATHS || isActivationTokenStatusPath(path)) {
             return chain.proceed(original)
         }
 
@@ -40,13 +41,26 @@ class AuthInterceptor @Inject constructor(
         return chain.proceed(request)
     }
 
+    /**
+     * Match-uje `/auth-employee/activation-token/{token}/status` (Sc 9 pre-check
+     * iz 12.05.2026 — token status check pre aktivacije). Token je dinamicki
+     * UUID pa ne moze biti u BYPASS_PATHS setu.
+     */
+    private fun isActivationTokenStatusPath(path: String): Boolean {
+        return path.startsWith("/auth-employee/activation-token/") && path.endsWith("/status")
+    }
+
     private companion object {
+        // Eksplicitan, exact-match bypass — sve sto NIJE ovde dobija Bearer.
+        // /auth/logout, /auth/me, /auth/change-password itd. MORAJU imati Bearer.
         val BYPASS_PATHS = setOf(
             "/auth/login",
             "/auth/refresh",
+            "/auth/register",
             "/auth/password_reset/request",
             "/auth/password_reset/confirm",
             "/auth-employee/activate"
+            // /auth/logout NAMERNO NIJE ovde — server-side blacklist mora da vidi token
         )
     }
 }

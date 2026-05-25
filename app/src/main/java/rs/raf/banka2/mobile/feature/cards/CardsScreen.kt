@@ -62,6 +62,8 @@ fun CardsScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
     var editingLimit by remember { mutableStateOf<CardDto?>(null) }
+    // ME-02 fix: block kartice trazi explicit confirm dialog (parity sa FE 14.05.2026 vece-1).
+    var blockConfirmFor by remember { mutableStateOf<Long?>(null) }
 
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
@@ -121,7 +123,7 @@ fun CardsScreen(
                         } else {
                             rs.raf.banka2.mobile.core.ui.components.DangerButton(
                                 text = "Blokiraj",
-                                onClick = { viewModel.blockCard(card.id) },
+                                onClick = { blockConfirmFor = card.id },
                                 leadingIcon = Icons.Filled.Block,
                                 modifier = Modifier.weight(1f)
                             )
@@ -139,6 +141,31 @@ fun CardsScreen(
             onConfirm = { newLimit ->
                 viewModel.updateLimit(card.id, newLimit)
                 editingLimit = null
+            }
+        )
+    }
+
+    // ME-02 fix: confirm dialog za block (parity sa FE).
+    blockConfirmFor?.let { cardId ->
+        AlertDialog(
+            onDismissRequest = { blockConfirmFor = null },
+            title = { Text("Blokiraj karticu?") },
+            text = {
+                Text(
+                    "Posle blokade kartica vise nece moci da se koristi za placanja. " +
+                        "Odblokirati moze samo zaposleni u banci."
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.blockCard(cardId)
+                    blockConfirmFor = null
+                }) {
+                    Text("Blokiraj", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { blockConfirmFor = null }) { Text("Otkazi") }
             }
         )
     }

@@ -75,7 +75,7 @@ class LoginViewModel @Inject constructor(
      * Sve ostale BE poruke (npr. "Neispravan email ili lozinka.", "Nalog je
      * deaktiviran.") sad su SR jer su uskladjene 12.05.2026 — vracamo raw.
      */
-    private fun mapLoginError(raw: String?): String? {
+    internal fun mapLoginError(raw: String?): String? {
         if (raw == null) return null
 
         // Nov SR prefix (BE 12.05.2026 vece)

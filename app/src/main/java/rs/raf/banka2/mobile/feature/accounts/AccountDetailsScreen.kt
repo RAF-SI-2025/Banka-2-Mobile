@@ -13,8 +13,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
@@ -31,6 +33,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -115,7 +118,7 @@ fun AccountDetailsScreen(
                         Spacer(Modifier.height(16.dp))
                         Row {
                             Column(modifier = Modifier.weight(1f)) {
-                                Text("Stanje", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text("Stanje sa rezervisanim", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 Text(
                                     MoneyFormatter.formatWithCurrency(acc.balance, acc.currency),
                                     style = MaterialTheme.typography.titleMedium,
@@ -128,6 +131,25 @@ fun AccountDetailsScreen(
                                     MoneyFormatter.formatWithCurrency(acc.availableBalance, acc.currency),
                                     style = MaterialTheme.typography.titleMedium,
                                     color = MaterialTheme.colorScheme.tertiary
+                                )
+                            }
+                        }
+                        // ME-05 fix: rezervisana sredstva amber boja (paritet sa FE 14.05.2026 vece-3).
+                        val reserved = (acc.reservedAmount ?: (acc.balance - acc.availableBalance))
+                        if (reserved > 0.0) {
+                            Spacer(Modifier.height(8.dp))
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    Icons.Filled.Lock,
+                                    contentDescription = null,
+                                    tint = Color(0xFFB45309), // amber-700
+                                    modifier = Modifier.size(14.dp)
+                                )
+                                Spacer(Modifier.width(6.dp))
+                                Text(
+                                    text = "Rezervisano: ${MoneyFormatter.formatWithCurrency(reserved, acc.currency)}",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = Color(0xFFB45309)
                                 )
                             }
                         }

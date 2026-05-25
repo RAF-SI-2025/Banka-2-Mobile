@@ -6,10 +6,15 @@ import androidx.core.content.edit
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -30,7 +35,25 @@ class AuthStore @Inject constructor(
     private val refreshFlow = MutableStateFlow(prefs.getString(KEY_REFRESH, null))
     private val emailFlow = MutableStateFlow(prefs.getString(KEY_EMAIL, null))
 
-    val isLoggedIn: StateFlow<Boolean> = MutableStateFlow(prefs.getString(KEY_ACCESS, null) != null).asStateFlow()
+    /**
+     * ME-01 fix: skopaj scope za derived StateFlow-ove. Singleton scope ne moze
+     * da "procuri" jer AuthStore i sam zivi celu sesiju app-a (Hilt @Singleton).
+     */
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
+    /**
+     * Derived StateFlow koji se update-uje kad god saveTokens/clear pomeri
+     * accessFlow. Inicijalna vrednost cita persisted prefs sinhrono — bez
+     * race-a sa Splash screen-om koji odmah cita isLoggedIn.
+     */
+    val isLoggedIn: StateFlow<Boolean> = accessFlow
+        .map { it != null }
+        .stateIn(
+            scope = scope,
+            started = SharingStarted.Eagerly,
+            initialValue = prefs.getString(KEY_ACCESS, null) != null
+        )
+
     val email: StateFlow<String?> = emailFlow.asStateFlow()
 
     suspend fun accessToken(): String? = withContext(Dispatchers.IO) { accessFlow.value }

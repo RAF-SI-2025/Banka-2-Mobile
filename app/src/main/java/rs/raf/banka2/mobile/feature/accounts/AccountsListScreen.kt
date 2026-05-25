@@ -18,6 +18,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBalanceWallet
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -166,10 +167,29 @@ private fun AccountCard(
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
-                    text = "Stanje: ${MoneyFormatter.formatWithCurrency(account.balance, account.currency)}",
+                    text = "Stanje sa rezervisanim: ${MoneyFormatter.formatWithCurrency(account.balance, account.currency)}",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+                // ME-05 fix: prikazi rezervisana sredstva amber bojom (paritet sa FE 14.05.2026 vece-3).
+                val reserved = (account.reservedAmount ?: (account.balance - account.availableBalance))
+                if (reserved > 0.0) {
+                    Spacer(Modifier.height(4.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            Icons.Filled.Lock,
+                            contentDescription = null,
+                            tint = Color(0xFFB45309), // amber-700
+                            modifier = Modifier.size(12.dp)
+                        )
+                        Spacer(Modifier.width(4.dp))
+                        Text(
+                            text = "Rezervisano: ${MoneyFormatter.formatWithCurrency(reserved, account.currency)}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color(0xFFB45309)
+                        )
+                    }
+                }
             }
         }
     }
