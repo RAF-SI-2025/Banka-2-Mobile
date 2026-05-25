@@ -20,11 +20,15 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.BookmarkBorder
+import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -39,8 +43,11 @@ import rs.raf.banka2.mobile.core.ui.components.DangerButton
 import rs.raf.banka2.mobile.core.ui.components.ErrorBanner
 import rs.raf.banka2.mobile.core.ui.components.GlassCard
 import rs.raf.banka2.mobile.core.ui.components.PrimaryButton
+import rs.raf.banka2.mobile.core.ui.components.SecondaryButton
 import rs.raf.banka2.mobile.data.dto.listing.ListingDto
 import rs.raf.banka2.mobile.data.dto.option.OptionChainDto
+import rs.raf.banka2.mobile.feature.pricealerts.PriceAlertDialog
+import rs.raf.banka2.mobile.feature.watchlist.AddToWatchlistDialog
 
 @Composable
 fun SecuritiesDetailsScreen(
@@ -50,6 +57,10 @@ fun SecuritiesDetailsScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val listing = state.listing
+
+    // FE2 #6 / #8 — dialog state za "Dodaj na watchlist" + "Postavi cenovni alarm".
+    var addToWatchlistOpen by remember { mutableStateOf(false) }
+    var priceAlertOpen by remember { mutableStateOf(false) }
 
     BankaScaffold(
         title = listing?.ticker ?: "Detalji",
@@ -108,6 +119,25 @@ fun SecuritiesDetailsScreen(
                         )
                     }
                 }
+                // FE2 — dugmad za Watchlist i Price Alert.
+                item {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        SecondaryButton(
+                            text = "Watchlist",
+                            onClick = { addToWatchlistOpen = true },
+                            modifier = Modifier.weight(1f),
+                            leadingIcon = Icons.Filled.BookmarkBorder,
+                            height = 44.dp,
+                        )
+                        SecondaryButton(
+                            text = "Cenovni alarm",
+                            onClick = { priceAlertOpen = true },
+                            modifier = Modifier.weight(1f),
+                            leadingIcon = Icons.Filled.NotificationsActive,
+                            height = 44.dp,
+                        )
+                    }
+                }
                 if (listing.listingType.equals("STOCK", true) && state.optionChains.isNotEmpty()) {
                     item {
                         Row(
@@ -137,6 +167,24 @@ fun SecuritiesDetailsScreen(
                 }
             }
         }
+    }
+
+    // FE2 #6/#8 — dialog overlay-i. Otvaraju se sa dugmadi ispod Kupi/Prodaj.
+    if (addToWatchlistOpen && listing != null) {
+        AddToWatchlistDialog(
+            listingId = listing.id,
+            listingTicker = listing.ticker,
+            onDismiss = { addToWatchlistOpen = false },
+        )
+    }
+    if (priceAlertOpen && listing != null) {
+        PriceAlertDialog(
+            listingId = listing.id,
+            ticker = listing.ticker,
+            currentPrice = listing.price,
+            onDismiss = { priceAlertOpen = false },
+            onCreated = { priceAlertOpen = false },
+        )
     }
 }
 

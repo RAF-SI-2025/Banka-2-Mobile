@@ -1,6 +1,7 @@
 package rs.raf.banka2.mobile.feature.cards
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -52,6 +53,17 @@ import rs.raf.banka2.mobile.core.ui.components.GlassCard
 import rs.raf.banka2.mobile.core.ui.theme.Indigo500
 import rs.raf.banka2.mobile.core.ui.theme.Violet600
 import rs.raf.banka2.mobile.data.dto.card.CardDto
+import java.math.BigDecimal
+
+/**
+ * ME-03: per-prepaid card UI gating + Top-Up/Withdraw dialog parity sa FE 14.05 vece-3.
+ */
+private data class CardMoveAction(
+    val card: CardDto,
+    val direction: Direction
+) {
+    enum class Direction { TOP_UP, WITHDRAW }
+}
 
 @Composable
 fun CardsScreen(
@@ -64,6 +76,8 @@ fun CardsScreen(
     var editingLimit by remember { mutableStateOf<CardDto?>(null) }
     // ME-02 fix: block kartice trazi explicit confirm dialog (parity sa FE 14.05.2026 vece-1).
     var blockConfirmFor by remember { mutableStateOf<Long?>(null) }
+    // ME-03: top-up/withdraw dialog za INTERNET_PREPAID kartice
+    var moveAction by remember { mutableStateOf<CardMoveAction?>(null) }
 
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
@@ -129,6 +143,25 @@ fun CardsScreen(
                             )
                         }
                     }
+                    // ME-03: za INTERNET_PREPAID kartice prikaz Dopuni + Povuci. Povuci je disabled
+                    // kad prepaid balance nije pozitivan.
+                    if (card.isPrepaid) {
+                        Spacer(Modifier.height(6.dp))
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            rs.raf.banka2.mobile.core.ui.components.PrimaryButton(
+                                text = "Dopuni",
+                                onClick = { moveAction = CardMoveAction(card, CardMoveAction.Direction.TOP_UP) },
+                                modifier = Modifier.weight(1f)
+                            )
+                            val canWithdraw = (card.prepaidBalance ?: BigDecimal.ZERO) > BigDecimal.ZERO
+                            rs.raf.banka2.mobile.core.ui.components.SecondaryButton(
+                                text = "Povuci",
+                                onClick = { moveAction = CardMoveAction(card, CardMoveAction.Direction.WITHDRAW) },
+                                enabled = canWithdraw,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -139,7 +172,7 @@ fun CardsScreen(
             card = card,
             onDismiss = { editingLimit = null },
             onConfirm = { newLimit ->
-                viewModel.updateLimit(card.id, newLimit)
+                viewModel.updateLimit(card.id, BigDecimal.valueOf(newLimit))
                 editingLimit = null
             }
         )
@@ -169,6 +202,105 @@ fun CardsScreen(
             }
         )
     }
+
+    // ME-03: Top-Up / Withdraw dialog za INTERNET_PREPAID karticu.
+    moveAction?.let { action ->
+        CardMoveDialog(
+            action = action,
+            accounts = state.accounts,
+            onDismiss = { moveAction = null },
+            onConfirm = { accountId, amount ->
+                when (action.direction) {
+                    CardMoveAction.Direction.TOP_UP -> viewModel.topUpCard(action.card.id, accountId, amount)
+                    CardMoveAction.Direction.WITHDRAW -> viewModel.withdrawFromCard(action.card.id, accountId, amount)
+                }
+                moveAction = null
+            }
+        )
+    }
+}
+
+/**
+ * ME-03: dialog za Top-Up (Account -> Card.prepaidBalance) ili Withdraw (Card -> Account).
+ * Direction-aware label-i, isti UI sa pre-validacijom amount > 0.
+ */
+@Composable
+private fun CardMoveDialog(
+    action: CardMoveAction,
+    accounts: List<rs.raf.banka2.mobile.data.dto.account.AccountDto>,
+    onDismiss: () -> Unit,
+    onConfirm: (accountId: Long, amount: BigDecimal) -> Unit
+) {
+    val isTopUp = action.direction == CardMoveAction.Direction.TOP_UP
+    var selectedAccountId by remember { mutableStateOf(accounts.firstOrNull()?.id) }
+    var amountText by remember { mutableStateOf("") }
+    val parsedAmount = MoneyFormatter.parseBigDecimal(amountText)
+    val canConfirm = selectedAccountId != null && parsedAmount != null && parsedAmount > BigDecimal.ZERO
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(if (isTopUp) "Dopuni karticu" else "Povuci sa kartice") },
+        text = {
+            Column {
+                Text(
+                    if (isTopUp)
+                        "Prebacujes iznos sa racuna na prepaid karticu (${action.card.cardName ?: "kartica"})."
+                    else
+                        "Prebacujes iznos sa kartice na racun. Trenutni balance: " +
+                            "${MoneyFormatter.format(action.card.prepaidBalance ?: BigDecimal.ZERO)}.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    if (isTopUp) "Sa kog racuna" else "Na koji racun",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Spacer(Modifier.height(4.dp))
+                accounts.forEach { acc ->
+                    val selected = selectedAccountId == acc.id
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth().clickable { selectedAccountId = acc.id }
+                    ) {
+                        androidx.compose.material3.RadioButton(
+                            selected = selected,
+                            onClick = { selectedAccountId = acc.id }
+                        )
+                        Text(
+                            text = "${acc.accountNumber} · ${acc.currency ?: ""}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
+                rs.raf.banka2.mobile.core.ui.components.AppTextField(
+                    value = amountText,
+                    onValueChange = { amountText = it },
+                    label = "Iznos",
+                    keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    val acc = selectedAccountId ?: return@TextButton
+                    val amt = parsedAmount ?: return@TextButton
+                    onConfirm(acc, amt)
+                },
+                enabled = canConfirm
+            ) {
+                Text(if (isTopUp) "Dopuni" else "Povuci")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Otkazi") }
+        }
+    )
 }
 
 @Composable
@@ -218,6 +350,30 @@ private fun CardVisual(card: CardDto) {
                 Spacer(Modifier.height(6.dp))
                 Text("Limit: ${MoneyFormatter.format(limit)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
+            // ME-03: per-category info — prepaid balance / credit limit / outstanding balance
+            if (card.isPrepaid && card.prepaidBalance != null) {
+                Text(
+                    "Prepaid balance: ${MoneyFormatter.format(card.prepaidBalance)}",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.tertiary
+                )
+            }
+            if (card.isCredit) {
+                card.creditLimit?.let {
+                    Text(
+                        "Kreditni limit: ${MoneyFormatter.format(it)}",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                card.outstandingBalance?.let {
+                    Text(
+                        "Duguje: ${MoneyFormatter.format(it)}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+            }
         }
     }
 }
@@ -228,6 +384,7 @@ private fun EditLimitDialog(
     onDismiss: () -> Unit,
     onConfirm: (Double) -> Unit
 ) {
+    // ME-11: cardLimit je sad BigDecimal, koristi MoneyFormatter BigDecimal overload.
     var limitText by remember { mutableStateOf(card.cardLimit?.let { MoneyFormatter.format(it) }.orEmpty()) }
     val parsed = MoneyFormatter.parse(limitText)
     AlertDialog(

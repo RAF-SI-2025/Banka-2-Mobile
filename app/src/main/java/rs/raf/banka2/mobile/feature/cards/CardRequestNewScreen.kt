@@ -117,17 +117,58 @@ fun CardRequestNewScreen(
                 AppTextField(
                     value = state.cardType,
                     onValueChange = viewModel::setType,
-                    label = "Tip (DEBIT/CREDIT)",
+                    label = "Brend (VISA/MASTERCARD/DINACARD/AMERICAN_EXPRESS)",
                     modifier = Modifier.fillMaxWidth()
                 )
+                Spacer(Modifier.height(8.dp))
+                // ME-03: kategorija placanja (ortogonalno na brend) — DEBIT/CREDIT/INTERNET_PREPAID
+                Text(
+                    "Kategorija placanja",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.height(4.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf("DEBIT" to "Debit", "CREDIT" to "Credit", "INTERNET_PREPAID" to "Prepaid").forEach { (value, label) ->
+                        val selected = state.cardCategory == value
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(
+                                    if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
+                                    else MaterialTheme.colorScheme.surfaceContainerHigh
+                                )
+                                .clickable { viewModel.setCategory(value) }
+                                .padding(10.dp)
+                        ) {
+                            Text(
+                                label,
+                                style = MaterialTheme.typography.titleSmall,
+                                color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    }
+                }
                 Spacer(Modifier.height(8.dp))
                 AppTextField(
                     value = state.limit,
                     onValueChange = viewModel::setLimit,
-                    label = "Limit",
+                    label = "Mesecni limit potrosnje",
                     keyboardType = KeyboardType.Decimal,
                     modifier = Modifier.fillMaxWidth()
                 )
+                // ME-03: za CREDIT karticu dodatno trazimo kreditni limit (banka unapred odobrava).
+                if (state.cardCategory == "CREDIT") {
+                    Spacer(Modifier.height(8.dp))
+                    AppTextField(
+                        value = state.creditLimit,
+                        onValueChange = viewModel::setCreditLimit,
+                        label = "Kreditni limit (odobrava banka)",
+                        keyboardType = KeyboardType.Decimal,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
             }
             ErrorBanner(state.error)
             if (state.awaitingConfirmation) {

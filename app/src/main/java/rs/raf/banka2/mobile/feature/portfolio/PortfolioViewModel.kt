@@ -11,9 +11,11 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import rs.raf.banka2.mobile.core.network.ApiResult
+import rs.raf.banka2.mobile.data.dto.dividend.DividendPayoutDto
 import rs.raf.banka2.mobile.data.dto.portfolio.PortfolioItemDto
 import rs.raf.banka2.mobile.data.dto.portfolio.PortfolioSummaryDto
 import rs.raf.banka2.mobile.data.dto.tax.TaxBreakdownItemDto
+import rs.raf.banka2.mobile.data.repository.DividendRepository
 import rs.raf.banka2.mobile.data.repository.OptionRepository
 import rs.raf.banka2.mobile.data.repository.PortfolioRepository
 import rs.raf.banka2.mobile.data.repository.TaxRepository
@@ -23,7 +25,8 @@ import javax.inject.Inject
 class PortfolioViewModel @Inject constructor(
     private val repository: PortfolioRepository,
     private val optionRepository: OptionRepository,
-    private val taxRepository: TaxRepository
+    private val taxRepository: TaxRepository,
+    private val dividendRepository: DividendRepository
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(PortfolioState())
@@ -41,6 +44,61 @@ class PortfolioViewModel @Inject constructor(
     }
 
     fun toggleTaxBreakdown() = _state.update { it.copy(taxBreakdownExpanded = !it.taxBreakdownExpanded) }
+
+    /**
+     * C3 #11 / Spec C3 §11 — toggle dividend istorije za jednu STOCK poziciju.
+     * Prvi tap fetcha BE; sledeci tap collapse. Cache po-portfolioId u state-u
+     * tako da kolapsovanje + ponovni expand ne pravi novi network poziv.
+     */
+    fun toggleDividends(portfolioId: Long) {
+        val current = _state.value
+        val isExpanded = current.expandedDividendPositionId == portfolioId
+        if (isExpanded) {
+            _state.update { it.copy(expandedDividendPositionId = null) }
+            return
+        }
+        // Vec cached?
+        val cached = current.dividendsByPosition[portfolioId]
+        if (cached != null) {
+            _state.update { it.copy(expandedDividendPositionId = portfolioId) }
+            return
+        }
+        _state.update {
+            it.copy(
+                expandedDividendPositionId = portfolioId,
+                dividendsLoading = true,
+                dividendsError = null
+            )
+        }
+        viewModelScope.launch { loadDividendsFor(portfolioId) }
+    }
+
+    private suspend fun loadDividendsFor(portfolioId: Long) {
+        when (val result = dividendRepository.getByPosition(portfolioId)) {
+            is ApiResult.Success -> _state.update {
+                val updated = it.dividendsByPosition.toMutableMap().apply {
+                    put(portfolioId, result.data)
+                }
+                it.copy(
+                    dividendsByPosition = updated,
+                    dividendsLoading = false,
+                    dividendsError = null
+                )
+            }
+            is ApiResult.Failure -> _state.update {
+                val isMissing = result.error.httpCode == 404 || result.error.httpCode == 501
+                val updated = it.dividendsByPosition.toMutableMap().apply {
+                    put(portfolioId, emptyList())
+                }
+                it.copy(
+                    dividendsByPosition = updated,
+                    dividendsLoading = false,
+                    dividendsError = if (isMissing) null else result.error.message
+                )
+            }
+            ApiResult.Loading -> Unit
+        }
+    }
 
     fun setPublicQuantity(item: PortfolioItemDto, value: Int) = viewModelScope.launch {
         when (val result = repository.setPublicQuantity(item.id, value)) {
@@ -108,7 +166,12 @@ data class PortfolioState(
     val error: String? = null,
     val taxBreakdown: List<TaxBreakdownItemDto> = emptyList(),
     val taxBreakdownExpanded: Boolean = false,
-    val taxBreakdownError: String? = null
+    val taxBreakdownError: String? = null,
+    /** C3 #11 / Spec C3 §11 — cached per-position dividend istorija. */
+    val dividendsByPosition: Map<Long, List<DividendPayoutDto>> = emptyMap(),
+    val expandedDividendPositionId: Long? = null,
+    val dividendsLoading: Boolean = false,
+    val dividendsError: String? = null
 )
 
 sealed interface PortfolioEvent {

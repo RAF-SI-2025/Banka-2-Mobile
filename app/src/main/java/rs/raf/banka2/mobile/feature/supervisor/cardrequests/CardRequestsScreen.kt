@@ -76,7 +76,8 @@ fun CardRequestsScreen(
                         Column(modifier = Modifier.weight(1f)) {
                             Text(req.ownerName ?: "Klijent", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
                             Text("Racun: ${req.accountNumber.orEmpty()}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Text("Tip: ${req.cardType.orEmpty()} · Limit: ${MoneyFormatter.format(req.cardLimit ?: 0.0)}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            // ME-11: cardLimit je BigDecimal — MoneyFormatter ima overload.
+                            Text("Tip: ${req.cardType.orEmpty()} · Limit: ${MoneyFormatter.format(req.cardLimit ?: java.math.BigDecimal.ZERO)}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         Text(req.status.orEmpty(), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
                     }

@@ -25,12 +25,14 @@ import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material.icons.filled.BarChart
+import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.CurrencyExchange
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Receipt
+import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
@@ -327,7 +329,10 @@ private fun ClientQuickActions(onNavigate: (HomeAction) -> Unit) {
         QuickActionItem("Fondovi", "Investicioni", Icons.Filled.AccountBalance, HomeAction.OpenFunds),
         QuickActionItem("Marzni", "Margin racun", Icons.Filled.AccountBalance, HomeAction.OpenMargin),
         QuickActionItem("Istorija", "Sve transakcije", Icons.Filled.Receipt, HomeAction.OpenPaymentHistory),
-        QuickActionItem("Stednja", "Oroceni depoziti", Icons.Filled.AccountBalanceWallet, HomeAction.OpenSavings)
+        QuickActionItem("Stednja", "Oroceni depoziti", Icons.Filled.AccountBalanceWallet, HomeAction.OpenSavings),
+        QuickActionItem("Watchlist", "Liste pracenja", Icons.Filled.BookmarkBorder, HomeAction.OpenWatchlist),
+        QuickActionItem("Alarmi", "Cenovni alarmi", Icons.Filled.NotificationsActive, HomeAction.OpenPriceAlerts),
+        QuickActionItem("Trajni nalozi", "DCA / RecurringOrder", Icons.Filled.Repeat, HomeAction.OpenRecurringOrders)
     )
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         items.chunked(4).forEach { row ->

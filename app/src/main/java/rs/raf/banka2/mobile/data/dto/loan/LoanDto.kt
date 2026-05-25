@@ -37,6 +37,11 @@ data class LoanInstallmentDto(
     val paidDate: String? = null
 )
 
+/**
+ * ME-09 fix: dodato `otpCode` polje — paritet sa PaymentRequest/TransferRequest/SavingsRequest.
+ * BE BE-PAY-06 fix u istom pravcu (apply + early-repayment moraju OTP-gated). Default null
+ * za backwards-compat sa starim BE-om koji jos ne zahteva OTP.
+ */
 @JsonClass(generateAdapter = true)
 data class LoanApplicationDto(
     val loanType: String,
@@ -47,7 +52,8 @@ data class LoanApplicationDto(
     val accountNumber: String? = null,
     val currency: String? = null,
     val monthlyIncome: Double? = null,
-    val employer: String? = null
+    val employer: String? = null,
+    val otpCode: String? = null
 )
 
 @JsonClass(generateAdapter = true)

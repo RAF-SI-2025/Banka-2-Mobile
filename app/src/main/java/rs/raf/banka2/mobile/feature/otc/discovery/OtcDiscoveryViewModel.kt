@@ -10,6 +10,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import rs.raf.banka2.mobile.core.auth.SessionManager
+import rs.raf.banka2.mobile.core.auth.SessionState
 import rs.raf.banka2.mobile.core.network.ApiResult
 import rs.raf.banka2.mobile.data.dto.otc.CreateOtcOfferDto
 import rs.raf.banka2.mobile.data.dto.otc.OtcListingDto
@@ -19,7 +21,8 @@ import javax.inject.Inject
 
 @HiltViewModel
 class OtcDiscoveryViewModel @Inject constructor(
-    private val repository: OtcRepository
+    private val repository: OtcRepository,
+    private val sessionManager: SessionManager
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(OtcDiscoveryState())
@@ -28,7 +31,14 @@ class OtcDiscoveryViewModel @Inject constructor(
     private val _events = Channel<OtcDiscoveryEvent>(Channel.BUFFERED)
     val events = _events.receiveAsFlow()
 
-    init { refresh() }
+    init {
+        // ME-04: za CLIENT-a bez TRADE_STOCKS permisije, NE pokrecemo refresh().
+        // UI prikazuje "Nemate dozvolu" umesto trade UI.
+        val profile = (sessionManager.state.value as? SessionState.LoggedIn)?.profile
+        val canTrade = profile?.canAccessTrading ?: true
+        _state.update { it.copy(canTrade = canTrade) }
+        if (canTrade) refresh()
+    }
 
     fun setScope(scope: OtcScope) {
         _state.update { it.copy(scope = scope) }
@@ -80,12 +90,17 @@ class OtcDiscoveryViewModel @Inject constructor(
     }
 }
 
+/**
+ * ME-04: `canTrade` = false znaci CLIENT bez TRADE_STOCKS permisije; UI prikazuje
+ * placeholder "Nemate dozvolu" umesto trgovinskih akcija.
+ */
 data class OtcDiscoveryState(
     val scope: OtcScope = OtcScope.Domestic,
     val loading: Boolean = false,
     val listings: List<OtcListingDto> = emptyList(),
     val error: String? = null,
-    val submitting: Boolean = false
+    val submitting: Boolean = false,
+    val canTrade: Boolean = true
 )
 
 sealed interface OtcDiscoveryEvent {

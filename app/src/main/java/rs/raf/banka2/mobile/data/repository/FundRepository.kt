@@ -12,6 +12,7 @@ import rs.raf.banka2.mobile.data.dto.fund.FundSummaryDto
 import rs.raf.banka2.mobile.data.dto.fund.FundTransactionDto
 import rs.raf.banka2.mobile.data.dto.fund.FundWithdrawDto
 import rs.raf.banka2.mobile.data.dto.fund.ReassignFundManagerDto
+import rs.raf.banka2.mobile.data.dto.fundstatistics.FundStatisticsDto
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -54,4 +55,8 @@ class FundRepository @Inject constructor(
 
     suspend fun reassignManager(fundId: Long, newManagerEmployeeId: Long): ApiResult<FundDetailDto> =
         safeApiCall { api.reassignManager(fundId, ReassignFundManagerDto(newManagerEmployeeId)) }
+
+    /** B12 / Spec C4 §15: statisticke metrike performansi fonda. */
+    suspend fun statistics(fundId: Long): ApiResult<FundStatisticsDto> =
+        safeApiCall { api.statistics(fundId) }
 }

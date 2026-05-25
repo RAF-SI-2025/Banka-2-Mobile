@@ -15,6 +15,7 @@ import rs.raf.banka2.mobile.core.network.ApiResult
 import rs.raf.banka2.mobile.data.dto.account.AccountDto
 import rs.raf.banka2.mobile.data.repository.AccountRepository
 import rs.raf.banka2.mobile.data.repository.CardRepository
+import java.math.BigDecimal
 import javax.inject.Inject
 
 @HiltViewModel
@@ -37,20 +38,51 @@ class CardRequestNewViewModel @Inject constructor(
     fun setLimit(value: String) = _state.update { it.copy(limit = value, error = null) }
     fun setType(value: String) = _state.update { it.copy(cardType = value.uppercase()) }
 
+    /**
+     * ME-03: izbor kategorije kartice — DEBIT (default), CREDIT (sa creditLimit-om),
+     * INTERNET_PREPAID (klijent top-up-uje sa Account-a).
+     */
+    fun setCategory(value: String) = _state.update {
+        val upper = value.uppercase()
+        // Kad nije CREDIT, brisem creditLimit polje za cist UX
+        it.copy(
+            cardCategory = upper,
+            creditLimit = if (upper == "CREDIT") it.creditLimit else "",
+            error = null
+        )
+    }
+
+    fun setCreditLimit(value: String) = _state.update { it.copy(creditLimit = value, error = null) }
+
     fun submit() {
         val current = _state.value
         val account = current.account ?: run {
             _state.update { it.copy(error = "Odaberi racun za karticu.") }
             return
         }
-        val limit = MoneyFormatter.parse(current.limit) ?: 0.0
-        if (limit <= 0.0) {
+        val limitDouble = MoneyFormatter.parse(current.limit) ?: 0.0
+        if (limitDouble <= 0.0) {
             _state.update { it.copy(error = "Limit mora biti veci od 0.") }
             return
         }
+        val limit = BigDecimal.valueOf(limitDouble)
+        val creditLimit: BigDecimal? = if (current.cardCategory == "CREDIT") {
+            val cl = MoneyFormatter.parse(current.creditLimit) ?: 0.0
+            if (cl <= 0.0) {
+                _state.update { it.copy(error = "Kreditni limit mora biti veci od 0 za CREDIT karticu.") }
+                return
+            }
+            BigDecimal.valueOf(cl)
+        } else null
         viewModelScope.launch {
             _state.update { it.copy(submitting = true) }
-            when (val result = cardRepository.submitRequest(account.id, limit, current.cardType.ifBlank { "DEBIT" })) {
+            when (val result = cardRepository.submitRequest(
+                accountId = account.id,
+                limit = limit,
+                cardType = current.cardType.ifBlank { "VISA" },
+                cardCategory = current.cardCategory.ifBlank { "DEBIT" },
+                creditLimit = creditLimit
+            )) {
                 is ApiResult.Success -> _state.update {
                     it.copy(
                         submitting = false,
@@ -105,7 +137,9 @@ data class CardRequestState(
     val accounts: List<AccountDto> = emptyList(),
     val account: AccountDto? = null,
     val limit: String = "",
-    val cardType: String = "DEBIT",
+    val cardType: String = "VISA",            // brend; ME-03 default VISA umesto starog "DEBIT" (koje je sad kategorija)
+    val cardCategory: String = "DEBIT",        // ME-03: DEBIT / CREDIT / INTERNET_PREPAID
+    val creditLimit: String = "",              // ME-03: za CREDIT karticu
     val submitting: Boolean = false,
     val awaitingConfirmation: Boolean = false,
     val pendingRequestId: Long? = null,

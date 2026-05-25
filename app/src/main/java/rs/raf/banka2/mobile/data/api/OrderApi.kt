@@ -16,10 +16,18 @@ interface OrderApi {
     @POST("orders")
     suspend fun createOrder(@Body body: CreateOrderDto): Response<OrderDto>
 
+    /**
+     * C3 #7 / Spec Celina 3 §7: filteri istorije ordera (status, datum, tip hartije).
+     * Backend OrderController.getMyOrders prihvata sve filter query parametre.
+     */
     @GET("orders/my")
     suspend fun getMyOrders(
         @Query("page") page: Int = 0,
-        @Query("size") size: Int = 50
+        @Query("size") size: Int = 50,
+        @Query("status") status: String? = null,
+        @Query("dateFrom") dateFrom: String? = null,
+        @Query("dateTo") dateTo: String? = null,
+        @Query("listingType") listingType: String? = null
     ): Response<PageResponse<OrderDto>>
 
     @GET("orders")

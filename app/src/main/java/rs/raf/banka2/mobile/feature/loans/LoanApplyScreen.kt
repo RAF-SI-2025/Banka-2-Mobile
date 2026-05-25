@@ -37,6 +37,7 @@ import rs.raf.banka2.mobile.core.ui.components.BankaScaffold
 import rs.raf.banka2.mobile.core.ui.components.ErrorBanner
 import rs.raf.banka2.mobile.core.ui.components.GlassCard
 import rs.raf.banka2.mobile.core.ui.components.PrimaryButton
+import rs.raf.banka2.mobile.core.ui.components.VerificationModal
 
 @Composable
 fun LoanApplyScreen(
@@ -112,4 +113,14 @@ fun LoanApplyScreen(
             PrimaryButton(text = "Posalji zahtev", onClick = viewModel::submit, loading = state.submitting, modifier = Modifier.fillMaxWidth())
         }
     }
+
+    // ME-09: OTP modal pre apply-a (BE BE-PAY-06 zahteva OTP). Spec C2: kredit move-uje
+    // pare, identicna semantika kao payment/transfer/savings.
+    VerificationModal(
+        visible = state.showVerification,
+        onDismiss = viewModel::closeVerification,
+        isVerifying = state.submitting,
+        externalError = state.error,
+        onSubmit = { code -> viewModel.submitWithOtp(code) }
+    )
 }

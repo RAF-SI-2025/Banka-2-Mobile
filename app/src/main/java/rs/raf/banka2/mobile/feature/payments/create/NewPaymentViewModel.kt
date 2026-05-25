@@ -14,6 +14,7 @@ import kotlinx.coroutines.launch
 import rs.raf.banka2.mobile.core.format.AccountFormatter
 import rs.raf.banka2.mobile.core.format.MoneyFormatter
 import rs.raf.banka2.mobile.core.network.ApiResult
+import rs.raf.banka2.mobile.core.storage.PaymentRecoveryStore
 import rs.raf.banka2.mobile.data.dto.account.AccountDto
 import rs.raf.banka2.mobile.data.dto.interbank.InitiateInterbankPaymentDto
 import rs.raf.banka2.mobile.data.dto.payment.CreatePaymentRequestDto
@@ -32,7 +33,8 @@ class NewPaymentViewModel @Inject constructor(
     private val accountRepository: AccountRepository,
     private val recipientRepository: RecipientRepository,
     private val paymentRepository: PaymentRepository,
-    private val interbankRepository: InterbankRepository
+    private val interbankRepository: InterbankRepository,
+    private val paymentRecoveryStore: PaymentRecoveryStore
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(NewPaymentState())
@@ -44,6 +46,43 @@ class NewPaymentViewModel @Inject constructor(
     init {
         viewModelScope.launch { loadAccounts() }
         viewModelScope.launch { loadRecipients() }
+        // ME-08: pri mount-u proveri ima li aktivnog 2PC placanja iz prethodne sesije.
+        viewModelScope.launch { recoverActive2PCIfAny() }
+    }
+
+    /**
+     * ME-08: ako PaymentRecoveryStore ima cuvani transactionId, prikazi 2PC progress
+     * dialog i nastavi polling. Cleanup-uje store ako BE vrati 404 (transactionId vise
+     * ne postoji) ili kad polling dosegne terminal status.
+     */
+    private suspend fun recoverActive2PCIfAny() {
+        val pendingTxId = paymentRecoveryStore.getActive2PC() ?: return
+        when (val statusResult = interbankRepository.status(pendingTxId)) {
+            is ApiResult.Success -> {
+                val tx = statusResult.data
+                _state.update {
+                    it.copy(
+                        isInterbank = true,
+                        interbankProgress = InterbankProgress(
+                            transactionId = tx.transactionId,
+                            status = tx.status,
+                            message = "Rekonstrukcija placanja iz prethodne sesije...",
+                            rate = tx.rate,
+                            fee = tx.fee,
+                            convertedAmount = tx.convertedAmount,
+                            convertedCurrency = tx.convertedCurrency
+                        )
+                    )
+                }
+                if (tx.status in TERMINAL_STATUSES) {
+                    paymentRecoveryStore.clearActive2PC()
+                } else {
+                    pollStatus(tx.transactionId)
+                }
+            }
+            // BE ne nalazi transakciju (404/expired) — obrisi recovery i ignorisi.
+            else -> paymentRecoveryStore.clearActive2PC()
+        }
     }
 
     fun selectAccount(account: AccountDto) =
@@ -67,7 +106,11 @@ class NewPaymentViewModel @Inject constructor(
     fun setPaymentCode(value: String) = _state.update { it.copy(paymentCode = value, error = null) }
     fun setReferenceNumber(value: String) = _state.update { it.copy(referenceNumber = value) }
 
-    fun openVerification() {
+    /**
+     * ME-06: validation iz openVerification-a — pre OTP-a otvara confirm dialog.
+     * Ako validacija prolazi, postavlja parsedAmount + isInterbank + showConfirmDialog.
+     */
+    fun openConfirmDialog() {
         val current = _state.value
         val parsedAmount = MoneyFormatter.parse(current.amount)
         when {
@@ -82,12 +125,25 @@ class NewPaymentViewModel @Inject constructor(
                 it.copy(
                     error = null,
                     parsedAmount = parsedAmount,
-                    showVerification = true,
+                    showConfirmDialog = true,
                     isInterbank = isInter
                 )
             }
         }
     }
+
+    fun closeConfirmDialog() = _state.update { it.copy(showConfirmDialog = false) }
+
+    /** ME-06: posle confirm dialog-a otvara OTP modal. */
+    fun confirmAndOpenOtp() = _state.update {
+        it.copy(showConfirmDialog = false, showVerification = true)
+    }
+
+    /**
+     * @deprecated ME-06: koristi `openConfirmDialog()` umesto direktnog OTP-a.
+     * Zadrzano radi backwards-compat sa testovima koji jos ne znaju za confirm korak.
+     */
+    fun openVerification() = openConfirmDialog()
 
     fun closeVerification() = _state.update { it.copy(showVerification = false) }
 
@@ -102,7 +158,11 @@ class NewPaymentViewModel @Inject constructor(
         }
     }
 
-    fun closeInterbankProgress() = _state.update { it.copy(interbankProgress = null) }
+    fun closeInterbankProgress() {
+        _state.update { it.copy(interbankProgress = null) }
+        // ME-08: rucno close iz UI-ja takodje brise recovery store.
+        viewModelScope.launch { paymentRecoveryStore.clearActive2PC() }
+    }
 
     private fun startIntraBankFlow(account: AccountDto, parsedAmount: Double, code: String) {
         val current = _state.value
@@ -161,6 +221,8 @@ class NewPaymentViewModel @Inject constructor(
             when (val result = interbankRepository.initiate(request)) {
                 is ApiResult.Success -> {
                     val tx = result.data
+                    // ME-08: cuvaj transactionId za recovery posle process death / app background.
+                    paymentRecoveryStore.saveActive2PC(tx.transactionId)
                     _state.update {
                         it.copy(
                             verifying = false,
@@ -175,7 +237,12 @@ class NewPaymentViewModel @Inject constructor(
                             )
                         )
                     }
-                    if (tx.status !in TERMINAL_STATUSES) pollStatus(tx.transactionId)
+                    if (tx.status !in TERMINAL_STATUSES) {
+                        pollStatus(tx.transactionId)
+                    } else {
+                        // Terminal pri prvom odgovoru — odmah clear recovery store.
+                        paymentRecoveryStore.clearActive2PC()
+                    }
                 }
                 is ApiResult.Failure -> _state.update {
                     it.copy(
@@ -209,7 +276,11 @@ class NewPaymentViewModel @Inject constructor(
                             )
                         )
                     }
-                    if (tx.status in TERMINAL_STATUSES) return
+                    if (tx.status in TERMINAL_STATUSES) {
+                        // ME-08: clear recovery store posle terminal status-a.
+                        paymentRecoveryStore.clearActive2PC()
+                        return
+                    }
                 }
                 else -> Unit
             }
@@ -222,6 +293,8 @@ class NewPaymentViewModel @Inject constructor(
                 )
             )
         }
+        // ME-08: STUCK je takodje terminal — clear store. Korisnik moze ponovo da poseti screen.
+        paymentRecoveryStore.clearActive2PC()
     }
 
     private suspend fun loadAccounts() {
@@ -266,6 +339,7 @@ data class NewPaymentState(
     val paymentCode: String = "289",
     val referenceNumber: String = "",
     val error: String? = null,
+    val showConfirmDialog: Boolean = false,  // ME-06: confirm dialog pre OTP-a
     val showVerification: Boolean = false,
     val verifying: Boolean = false,
     val isInterbank: Boolean = false,

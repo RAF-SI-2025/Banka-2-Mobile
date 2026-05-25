@@ -71,7 +71,10 @@ fun EmployeeCreateScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(Modifier.height(12.dp))
+                // ME-12 fix: BE @NotBlank na email/username/dateOfBirth/gender/phone/address.
                 AppTextField(value = state.email, onValueChange = viewModel::setEmail, label = "Email *", keyboardType = KeyboardType.Email, modifier = Modifier.fillMaxWidth())
+                Spacer(Modifier.height(8.dp))
+                AppTextField(value = state.username, onValueChange = viewModel::setUsername, label = "Username *", modifier = Modifier.fillMaxWidth())
                 Spacer(Modifier.height(8.dp))
                 Row {
                     AppTextField(value = state.firstName, onValueChange = viewModel::setFirstName, label = "Ime *", modifier = Modifier.weight(1f))
@@ -79,21 +82,25 @@ fun EmployeeCreateScreen(
                     AppTextField(value = state.lastName, onValueChange = viewModel::setLastName, label = "Prezime *", modifier = Modifier.weight(1f))
                 }
                 Spacer(Modifier.height(8.dp))
-                AppTextField(value = state.phoneNumber, onValueChange = viewModel::setPhone, label = "Telefon", keyboardType = KeyboardType.Phone, modifier = Modifier.fillMaxWidth())
+                // dateOfBirth format: YYYY-MM-DD; BE Jackson parsira automatski u LocalDate
+                AppTextField(value = state.dateOfBirth, onValueChange = viewModel::setDateOfBirth, label = "Datum rodjenja * (YYYY-MM-DD)", modifier = Modifier.fillMaxWidth())
                 Spacer(Modifier.height(8.dp))
-                AppTextField(value = state.address, onValueChange = viewModel::setAddress, label = "Adresa", modifier = Modifier.fillMaxWidth())
+                AppTextField(value = state.phoneNumber, onValueChange = viewModel::setPhone, label = "Telefon *", keyboardType = KeyboardType.Phone, modifier = Modifier.fillMaxWidth())
+                Spacer(Modifier.height(8.dp))
+                AppTextField(value = state.address, onValueChange = viewModel::setAddress, label = "Adresa *", modifier = Modifier.fillMaxWidth())
                 Spacer(Modifier.height(8.dp))
                 Row {
-                    AppTextField(value = state.gender, onValueChange = viewModel::setGender, label = "Pol (M/F)", modifier = Modifier.weight(1f))
+                    AppTextField(value = state.gender, onValueChange = viewModel::setGender, label = "Pol (M/F) *", modifier = Modifier.weight(1f))
                     Spacer(Modifier.width(8.dp))
-                    AppTextField(value = state.position, onValueChange = viewModel::setPosition, label = "Pozicija", modifier = Modifier.weight(1f))
+                    AppTextField(value = state.position, onValueChange = viewModel::setPosition, label = "Pozicija *", modifier = Modifier.weight(1f))
                 }
                 Spacer(Modifier.height(8.dp))
-                AppTextField(value = state.department, onValueChange = viewModel::setDepartment, label = "Departman", modifier = Modifier.fillMaxWidth())
+                AppTextField(value = state.department, onValueChange = viewModel::setDepartment, label = "Departman *", modifier = Modifier.fillMaxWidth())
             }
             GlassCard(modifier = Modifier.fillMaxWidth()) {
                 Text("Permisije", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
                 Spacer(Modifier.height(8.dp))
+                // ME-12 fix: BE prima permissions: Set<String> ("AGENT"/"SUPERVISOR"/"ADMIN") umesto boolean flagova.
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().clickable { viewModel.setIsAgent(!state.isAgent) }) {
                     Checkbox(checked = state.isAgent, onCheckedChange = viewModel::setIsAgent)
                     Text("Agent (trgovina hartijama)", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
@@ -101,6 +108,10 @@ fun EmployeeCreateScreen(
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().clickable { viewModel.setIsSupervisor(!state.isSupervisor) }) {
                     Checkbox(checked = state.isSupervisor, onCheckedChange = viewModel::setIsSupervisor)
                     Text("Supervizor (orderi/aktuari/porez)", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
+                }
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().clickable { viewModel.setIsAdmin(!state.isAdmin) }) {
+                    Checkbox(checked = state.isAdmin, onCheckedChange = viewModel::setIsAdmin)
+                    Text("Admin (sve)", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
                 }
             }
             ErrorBanner(state.error)

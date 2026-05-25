@@ -20,6 +20,8 @@ import rs.raf.banka2.mobile.data.dto.otc.OtcInterbankOfferApiDto
 import rs.raf.banka2.mobile.data.dto.otc.OtcListingDto
 import rs.raf.banka2.mobile.data.dto.otc.OtcOfferDto
 import rs.raf.banka2.mobile.data.dto.otc.SagaStatusDto
+import rs.raf.banka2.mobile.data.dto.otchistory.OtcNegotiationHistoryDto
+import rs.raf.banka2.mobile.data.dto.common.PageResponse
 
 // INTRA-BANK ONLY za debug isolation
 interface OtcApi {
@@ -98,4 +100,26 @@ interface OtcApi {
         @Path("contractId") contractId: String,
         @Query("buyerAccountId") buyerAccountId: Long? = null
     ): Response<OtcInterbankContractApiDto>
+
+    // ─── B10 / Spec C4 §13 — Istorija OTC pregovora (supervisor view) ─────
+
+    /**
+     * Paginiran pregled svih zapisa OTC pregovora sa filterima.
+     * Dostupno samo ADMIN/SUPERVISOR rolama (BE vraca 403 inace).
+     */
+    @GET("otc/negotiation-history")
+    suspend fun negotiationHistory(
+        @Query("status") status: String? = null,
+        @Query("modifiedById") modifiedById: Long? = null,
+        @Query("from") from: String? = null,
+        @Query("to") to: String? = null,
+        @Query("page") page: Int = 0,
+        @Query("size") size: Int = 20
+    ): Response<PageResponse<OtcNegotiationHistoryDto>>
+
+    /** Hronoloski lanac kontraponuda jednog pregovora (sve iteracije). */
+    @GET("otc/negotiation-history/{negotiationId}")
+    suspend fun negotiationHistoryChain(
+        @Path("negotiationId") negotiationId: Long
+    ): Response<List<OtcNegotiationHistoryDto>>
 }

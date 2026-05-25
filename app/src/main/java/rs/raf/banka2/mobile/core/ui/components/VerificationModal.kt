@@ -12,8 +12,10 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -22,7 +24,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -38,6 +43,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import rs.raf.banka2.mobile.core.auth.TotpHelpers
 import rs.raf.banka2.mobile.core.network.ApiResult
 import rs.raf.banka2.mobile.data.repository.PaymentRepository
 import javax.inject.Inject
@@ -72,6 +78,10 @@ fun VerificationModal(
     val state by viewModel.state.collectAsState()
     val scope = rememberCoroutineScope()
 
+    // TODO_final C2 #3 — TOTP 30s window indicator. Sync sa stvarnim epoch-om
+    // (TotpHelpers.getTotpSecondsLeft) tako da rollover prati pravu granicu.
+    var totpSecondsLeft by remember { mutableIntStateOf(TotpHelpers.getTotpSecondsLeft()) }
+
     LaunchedEffect(visible) {
         viewModel.initOnOpen()
     }
@@ -82,6 +92,18 @@ fun VerificationModal(
             viewModel.tickOneSecond()
         }
     }
+
+    LaunchedEffect(visible) {
+        if (!visible) return@LaunchedEffect
+        totpSecondsLeft = TotpHelpers.getTotpSecondsLeft()
+        while (visible) {
+            delay(1000L)
+            totpSecondsLeft = TotpHelpers.getTotpSecondsLeft()
+        }
+    }
+
+    val totpProgress = TotpHelpers.getTotpProgressFraction(totpSecondsLeft)
+    val totpColor = TotpHelpers.getTotpIndicatorColor(totpSecondsLeft)
 
     AlertDialog(
         onDismissRequest = {
@@ -96,7 +118,7 @@ fun VerificationModal(
                 )
                 Spacer(Modifier.width(8.dp))
                 Text(
-                    text = "Potvrda OTP kodom",
+                    text = "Verifikacija (TOTP)",
                     style = MaterialTheme.typography.titleLarge
                 )
             }
@@ -104,9 +126,44 @@ fun VerificationModal(
         text = {
             Column {
                 Text(
-                    text = "Unesi 6-cifreni kod sa mobilne aplikacije.",
+                    text = "Otvori TOTP authenticator app (Google Authenticator, Authy, Microsoft Authenticator) i upisi kod. Kod se menja svakih 30 sekundi.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.height(12.dp))
+
+                // TOTP 30s window progress — pokazuje koliko sekundi ostaje
+                // u trenutnom prozoru u authenticator app-u (RFC 6238).
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Outlined.Schedule,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(Modifier.width(4.dp))
+                        Text(
+                            text = "TOTP prozor",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Text(
+                        text = "Novi kod za ${totpSecondsLeft}s",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = totpColor,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+                Spacer(Modifier.height(4.dp))
+                LinearProgressIndicator(
+                    progress = { totpProgress },
+                    color = totpColor,
+                    modifier = Modifier.fillMaxWidth().height(4.dp)
                 )
                 Spacer(Modifier.height(12.dp))
 

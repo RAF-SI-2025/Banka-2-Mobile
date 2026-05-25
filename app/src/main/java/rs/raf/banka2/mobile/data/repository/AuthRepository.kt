@@ -10,6 +10,7 @@ import rs.raf.banka2.mobile.core.network.ApiResult
 import rs.raf.banka2.mobile.core.network.safeApiCall
 import rs.raf.banka2.mobile.core.storage.AuthStore
 import rs.raf.banka2.mobile.data.api.AuthApi
+import rs.raf.banka2.mobile.data.api.ClientApi
 import rs.raf.banka2.mobile.data.api.EmployeeApi
 import rs.raf.banka2.mobile.data.dto.auth.ActivateAccountRequest
 import rs.raf.banka2.mobile.data.dto.auth.ActivationTokenStatusResponse
@@ -34,6 +35,7 @@ import javax.inject.Singleton
 class AuthRepository @Inject constructor(
     private val authApi: AuthApi,
     private val employeeApi: EmployeeApi,
+    private val clientApi: ClientApi,
     private val authStore: AuthStore,
     private val sessionManager: SessionManager
 ) {
@@ -127,46 +129,68 @@ class AuthRepository @Inject constructor(
         val isEmployeeRole = jwtRole.equals("ADMIN", ignoreCase = true)
             || jwtRole.equals("EMPLOYEE", ignoreCase = true)
 
-        val (firstName, lastName, permissions, id) = if (isEmployeeRole) {
+        // ME-04 fix: za CLIENT-a fetch-uj `/clients?email=...` da bismo procitali
+        // `canTradeStocks` polje. Best-effort — ako BE vrati 403/404, default je true
+        // (backwards-compat sa legacy seed-om).
+        val profileData = if (isEmployeeRole) {
             when (val empResult = safeApiCall { employeeApi.searchByEmail(email) }) {
                 is ApiResult.Success -> {
                     val match = empResult.data.content.firstOrNull { it.email.equals(email, ignoreCase = true) }
                         ?: empResult.data.content.firstOrNull()
-                    EmployeeProfile(
+                    ResolvedProfile(
                         firstName = match?.firstName.orEmpty(),
                         lastName = match?.lastName.orEmpty(),
                         permissions = match?.permissions.orEmpty().toSet(),
-                        id = match?.id ?: 0L
+                        id = match?.id ?: 0L,
+                        canTradeStocks = true // zaposleni uvek mogu da trguju
                     )
                 }
                 is ApiResult.Failure -> return empResult
-                is ApiResult.Loading -> EmployeeProfile()
+                is ApiResult.Loading -> ResolvedProfile()
             }
         } else {
-            // CLIENT — nema /clients me endpoint-a u mobile flow-u za sada.
-            // Ime/prezime ce se popuniti iz `/accounts/my` u Faza 2 dashboard-u.
-            EmployeeProfile()
+            // CLIENT — fetchuj kompletan client zapis radi canTradeStocks i naseg ime/prezime.
+            when (val clientResult = safeApiCall { clientApi.list(email = email, limit = 5) }) {
+                is ApiResult.Success -> {
+                    val match = clientResult.data.content.firstOrNull { it.email.equals(email, ignoreCase = true) }
+                        ?: clientResult.data.content.firstOrNull()
+                    ResolvedProfile(
+                        firstName = match?.firstName.orEmpty(),
+                        lastName = match?.lastName.orEmpty(),
+                        permissions = emptySet(),
+                        id = match?.id ?: 0L,
+                        // BE polje moze biti null kod legacy seed-a — default true
+                        canTradeStocks = match?.canTradeStocks ?: true
+                    )
+                }
+                // Best-effort: ako BE nema /clients lookup (403/404), nastavi sa defaults.
+                is ApiResult.Failure -> ResolvedProfile(canTradeStocks = true)
+                is ApiResult.Loading -> ResolvedProfile()
+            }
         }
 
-        val role = RoleMapper.fromJwtRole(jwtRole, permissions)
+        val role = RoleMapper.fromJwtRole(jwtRole, profileData.permissions)
         val profile = UserProfile(
-            id = id,
+            id = profileData.id,
             email = email,
-            firstName = firstName,
-            lastName = lastName,
+            firstName = profileData.firstName,
+            lastName = profileData.lastName,
             role = if (role == UserRole.Unknown && jwtRole.equals("CLIENT", ignoreCase = true)) {
                 UserRole.Client
             } else role,
-            permissions = permissions
+            permissions = profileData.permissions,
+            canTradeStocks = profileData.canTradeStocks
         )
         sessionManager.update(SessionState.LoggedIn(profile))
         return ApiResult.Success(profile)
     }
 
-    private data class EmployeeProfile(
+    /** ME-04: rename iz EmployeeProfile zbog client putanje + canTradeStocks polje. */
+    private data class ResolvedProfile(
         val firstName: String = "",
         val lastName: String = "",
         val permissions: Set<String> = emptySet(),
-        val id: Long = 0L
+        val id: Long = 0L,
+        val canTradeStocks: Boolean = true
     )
 }

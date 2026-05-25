@@ -1,5 +1,6 @@
 package rs.raf.banka2.mobile.core.format
 
+import java.math.BigDecimal
 import java.text.DecimalFormat
 import java.text.DecimalFormatSymbols
 import java.util.Locale
@@ -7,6 +8,10 @@ import java.util.Locale
 /**
  * Formatiranje novca u srpski locale (sr-RS): tacka kao separator hiljada,
  * zarez za decimale. Sve aplikacije koriste ovaj util — ne formatiraj rucno.
+ *
+ * ME-11: dodate BigDecimal overload-e jer DTO-ovi sada koriste BigDecimal
+ * (spec C2 §255). Postojeci Double-call sites ostaju funkcionalni zbog
+ * type-spec overload-a.
  */
 object MoneyFormatter {
 
@@ -26,11 +31,19 @@ object MoneyFormatter {
         }
     }
 
+    /** ME-11: BigDecimal overload — koristi se za Card / Payment / Transfer / Account DTO. */
+    fun format(amount: BigDecimal, fractionDigits: Int = 2): String =
+        format(amount.toDouble(), fractionDigits)
+
     /** "12.345,67 RSD" */
     fun formatWithCurrency(amount: Double, currency: String?, fractionDigits: Int = 2): String {
         val number = format(amount, fractionDigits)
         return if (currency.isNullOrBlank()) number else "$number $currency"
     }
+
+    /** ME-11: BigDecimal overload. */
+    fun formatWithCurrency(amount: BigDecimal, currency: String?, fractionDigits: Int = 2): String =
+        formatWithCurrency(amount.toDouble(), currency, fractionDigits)
 
     /** Konvertuje iznos sa zarezom u Double (parser je tolerantan na razmake i razne separatore). */
     fun parse(input: String): Double? {
@@ -40,6 +53,20 @@ object MoneyFormatter {
             .replace(".", "")
             .replace(',', '.')
         return sanitized.toDoubleOrNull()
+    }
+
+    /** ME-11: vraca BigDecimal za precizan price/quantity prikaz. */
+    fun parseBigDecimal(input: String): BigDecimal? {
+        if (input.isBlank()) return null
+        val sanitized = input.trim()
+            .replace(" ", "")
+            .replace(".", "")
+            .replace(',', '.')
+        return try {
+            BigDecimal(sanitized)
+        } catch (_: NumberFormatException) {
+            null
+        }
     }
 }
 

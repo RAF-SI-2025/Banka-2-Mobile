@@ -13,7 +13,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material3.Icon
@@ -30,6 +33,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import rs.raf.banka2.mobile.core.format.CurrencyVisuals
 import rs.raf.banka2.mobile.core.format.MoneyFormatter
+import rs.raf.banka2.mobile.core.ui.ExchangeRateHistoryChart
 import rs.raf.banka2.mobile.core.ui.components.AnimatedBackground
 import rs.raf.banka2.mobile.core.ui.components.AppTextField
 import rs.raf.banka2.mobile.core.ui.components.BankaScaffold
@@ -125,13 +129,15 @@ fun ExchangeScreen(
                 )
             }
             items(state.rates, key = { (it.currency ?: it.fromCurrency).orEmpty() + (it.toCurrency.orEmpty()) }) { rate ->
+                val ccy = rate.currency ?: rate.fromCurrency.orEmpty()
+                val isExpanded = state.expandedCurrency == ccy
                 GlassCard(modifier = Modifier.fillMaxWidth()) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(CurrencyVisuals.flag(rate.currency ?: rate.fromCurrency), style = MaterialTheme.typography.titleLarge)
                         Spacer(Modifier.width(12.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                rate.currency ?: rate.fromCurrency.orEmpty(),
+                                ccy,
                                 style = MaterialTheme.typography.titleSmall,
                                 color = MaterialTheme.colorScheme.onSurface
                             )
@@ -144,6 +150,66 @@ fun ExchangeScreen(
                         Column(horizontalAlignment = Alignment.End) {
                             Text("Kupovni: ${MoneyFormatter.format(rate.buyRate ?: 0.0, 4)}", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurface)
                             Text("Prodajni: ${MoneyFormatter.format(rate.sellRate ?: 0.0, 4)}", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurface)
+                        }
+                    }
+                    if (ccy.isNotBlank()) {
+                        Spacer(Modifier.height(6.dp))
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { viewModel.toggleHistory(ccy) },
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                "Istorija (1 mesec)",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Icon(
+                                if (isExpanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                                contentDescription = if (isExpanded) "Sakrij" else "Prikazi",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                        if (isExpanded) {
+                            val history = state.historyByCurrency[ccy].orEmpty()
+                            when {
+                                state.historyLoading -> Text(
+                                    "Ucitavanje istorije...",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                history.isEmpty() -> Text(
+                                    "Servis za istoriju kursa jos nije dostupan na BE-u.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                else -> {
+                                    val first = history.first().rate
+                                    val last = history.last().rate
+                                    val change = ((last - first) / first) * 100.0
+                                    Spacer(Modifier.height(4.dp))
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            "Pre 30 dana: ${MoneyFormatter.format(first, 4)}",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                        Text(
+                                            "${if (change >= 0) "+" else ""}${"%.2f".format(change)}%",
+                                            style = MaterialTheme.typography.labelMedium,
+                                            color = if (change >= 0) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error
+                                        )
+                                    }
+                                    Spacer(Modifier.height(4.dp))
+                                    ExchangeRateHistoryChart(points = history)
+                                }
+                            }
                         }
                     }
                 }

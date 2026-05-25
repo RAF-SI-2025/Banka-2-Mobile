@@ -21,6 +21,7 @@ import rs.raf.banka2.mobile.data.dto.common.EmployeeDto
 import rs.raf.banka2.mobile.data.dto.fund.FundDetailDto
 import rs.raf.banka2.mobile.data.dto.fund.FundPerformancePointDto
 import rs.raf.banka2.mobile.data.dto.fund.FundPositionDto
+import rs.raf.banka2.mobile.data.dto.fundstatistics.FundStatisticsDto
 import rs.raf.banka2.mobile.data.repository.AccountRepository
 import rs.raf.banka2.mobile.data.repository.FundRepository
 import javax.inject.Inject
@@ -62,6 +63,22 @@ class FundDetailsViewModel @Inject constructor(
         viewModelScope.launch { fetchPerformance() }
         viewModelScope.launch { fetchAccounts() }
         viewModelScope.launch { fetchPosition() }
+        viewModelScope.launch { fetchStatistics() }
+    }
+
+    /**
+     * B12 / Spec C4 §15: statisticke metrike fonda. Tihi fallback ako BE
+     * jos uvek ne podrzava endpoint (404 / 501).
+     */
+    private suspend fun fetchStatistics() {
+        when (val result = fundRepository.statistics(fundId)) {
+            is ApiResult.Success -> _state.update { it.copy(statistics = result.data) }
+            is ApiResult.Failure -> {
+                val isMissing = result.error.httpCode == 404 || result.error.httpCode == 501
+                if (!isMissing) _state.update { it.copy(statistics = null) }
+            }
+            ApiResult.Loading -> Unit
+        }
     }
 
     fun invest(sourceAccountId: Long, amount: Double) = viewModelScope.launch {
@@ -187,7 +204,9 @@ data class FundDetailsState(
     val error: String? = null,
     val reassignDialogVisible: Boolean = false,
     val reassignCandidates: List<EmployeeDto> = emptyList(),
-    val reassignError: String? = null
+    val reassignError: String? = null,
+    /** B12: statisticke metrike fonda. null = nije fetched ili 404. */
+    val statistics: FundStatisticsDto? = null
 )
 
 sealed interface FundDetailsEvent {

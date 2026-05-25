@@ -11,6 +11,7 @@ import kotlinx.coroutines.launch
 import rs.raf.banka2.mobile.core.format.MoneyFormatter
 import rs.raf.banka2.mobile.core.network.ApiResult
 import rs.raf.banka2.mobile.data.dto.exchange.CalculateExchangeResponseDto
+import rs.raf.banka2.mobile.data.dto.exchange.ExchangeHistoryPointDto
 import rs.raf.banka2.mobile.data.dto.exchange.ExchangeRateDto
 import rs.raf.banka2.mobile.data.repository.ExchangeRepository
 import javax.inject.Inject
@@ -74,6 +75,42 @@ class ExchangeViewModel @Inject constructor(
             ApiResult.Loading -> Unit
         }
     }
+
+    /**
+     * Mobile-bonus #5: tap "Istorija" na kursu otvara sparkline panel za tu
+     * valutu. Repository graceful-fallback (404/501) → prazna lista pa chart
+     * jednostavno nije renderovan.
+     */
+    fun toggleHistory(currency: String) {
+        val current = _state.value
+        if (current.expandedCurrency == currency) {
+            _state.update { it.copy(expandedCurrency = null) }
+            return
+        }
+        val cached = current.historyByCurrency[currency]
+        if (cached != null) {
+            _state.update { it.copy(expandedCurrency = currency) }
+            return
+        }
+        _state.update { it.copy(expandedCurrency = currency, historyLoading = true) }
+        viewModelScope.launch {
+            when (val result = repository.history(currency, days = 30)) {
+                is ApiResult.Success -> _state.update {
+                    val updated = it.historyByCurrency.toMutableMap().apply {
+                        put(currency, result.data)
+                    }
+                    it.copy(historyByCurrency = updated, historyLoading = false)
+                }
+                is ApiResult.Failure -> _state.update {
+                    val updated = it.historyByCurrency.toMutableMap().apply {
+                        put(currency, emptyList())
+                    }
+                    it.copy(historyByCurrency = updated, historyLoading = false)
+                }
+                ApiResult.Loading -> Unit
+            }
+        }
+    }
 }
 
 data class ExchangeState(
@@ -83,5 +120,9 @@ data class ExchangeState(
     val fromCurrency: String = "RSD",
     val toCurrency: String = "EUR",
     val calculation: CalculateExchangeResponseDto? = null,
-    val error: String? = null
+    val error: String? = null,
+    /** Mobile-bonus #5: 1-mesec istorija po valuti (cache + expand state). */
+    val historyByCurrency: Map<String, List<ExchangeHistoryPointDto>> = emptyMap(),
+    val expandedCurrency: String? = null,
+    val historyLoading: Boolean = false
 )

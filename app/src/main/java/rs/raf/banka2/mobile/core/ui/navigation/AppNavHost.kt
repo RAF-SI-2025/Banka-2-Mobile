@@ -11,8 +11,10 @@ import rs.raf.banka2.mobile.feature.accounts.AccountRequestNewScreen
 import rs.raf.banka2.mobile.feature.accounts.AccountsListScreen
 import rs.raf.banka2.mobile.feature.accounts.business.BusinessAccountDetailsScreen
 import rs.raf.banka2.mobile.feature.actuaries.ActuariesScreen
+import rs.raf.banka2.mobile.feature.audit.AuditLogScreen
 import rs.raf.banka2.mobile.feature.clients.edit.ClientEditScreen
 import rs.raf.banka2.mobile.feature.margin.transactions.MarginTransactionsScreen
+import rs.raf.banka2.mobile.feature.otc.history.OtcNegotiationHistoryScreen
 import rs.raf.banka2.mobile.feature.auth.activate.ActivateAccountScreen
 import rs.raf.banka2.mobile.feature.auth.forgot.ForgotPasswordScreen
 import rs.raf.banka2.mobile.feature.auth.login.LoginScreen
@@ -30,6 +32,8 @@ import rs.raf.banka2.mobile.feature.home.HomeScreen
 import rs.raf.banka2.mobile.feature.loans.LoanApplyScreen
 import rs.raf.banka2.mobile.feature.loans.LoansScreen
 import rs.raf.banka2.mobile.feature.margin.MarginScreen
+import rs.raf.banka2.mobile.feature.notifications.NotificationTarget
+import rs.raf.banka2.mobile.feature.notifications.NotificationsScreen
 import rs.raf.banka2.mobile.feature.orders.create.CreateOrderScreen
 import rs.raf.banka2.mobile.feature.orders.my.MyOrdersScreen
 import rs.raf.banka2.mobile.feature.orders.supervisor.OrdersSupervisorScreen
@@ -45,6 +49,10 @@ import rs.raf.banka2.mobile.feature.employees.list.EmployeeListScreen
 import rs.raf.banka2.mobile.feature.loans.details.LoanDetailsScreen
 import rs.raf.banka2.mobile.feature.payments.create.NewPaymentScreen
 import rs.raf.banka2.mobile.feature.payments.details.PaymentDetailsScreen
+import rs.raf.banka2.mobile.feature.pricealerts.PriceAlertsScreen
+import rs.raf.banka2.mobile.feature.recurringorders.RecurringOrdersScreen
+import rs.raf.banka2.mobile.feature.watchlist.WatchlistScreen
+import rs.raf.banka2.mobile.feature.payments.quickapprove.QuickApproveScreen
 import rs.raf.banka2.mobile.feature.payments.history.PaymentHistoryScreen
 import rs.raf.banka2.mobile.feature.payments.recipients.RecipientsScreen
 import rs.raf.banka2.mobile.feature.supervisor.accountcards.AccountCardsScreen
@@ -247,6 +255,61 @@ private fun androidx.navigation.NavGraphBuilder.addClientRoutes(
         MarginTransactionsScreen(onBack = { navController.popBackStack() })
     }
     composable<Routes.Otp> { OtpScreen(onBack = { navController.popBackStack() }) }
+
+    // TODO_final C2 #4 — Notifications inbox.
+    composable<Routes.Notifications> {
+        NotificationsScreen(
+            onBack = { navController.popBackStack() },
+            onTarget = { target -> navController.handleNotificationTarget(target) }
+        )
+    }
+
+    // TODO_final Mobile bonus #7 — Quick Approve placeholder.
+    composable<Routes.QuickApprovePayment> {
+        QuickApproveScreen(onBack = { navController.popBackStack() })
+    }
+
+    // TODO_final FE2 #8 — Watchlist (liste pracenja).
+    composable<Routes.Watchlist> {
+        WatchlistScreen(
+            onBack = { navController.popBackStack() },
+            onTradeListing = { listingId ->
+                navController.navigate(Routes.SecuritiesDetails(listingId))
+            }
+        )
+    }
+
+    // TODO_final FE2 #6 — Cenovni alarmi.
+    composable<Routes.PriceAlerts> {
+        PriceAlertsScreen(
+            onBack = { navController.popBackStack() },
+            onOpenSecurities = { navController.navigate(Routes.SecuritiesList) }
+        )
+    }
+
+    // TODO_final FE3 #10 — DCA / Trajni nalozi.
+    composable<Routes.RecurringOrders> {
+        RecurringOrdersScreen(onBack = { navController.popBackStack() })
+    }
+}
+
+private fun NavHostController.handleNotificationTarget(target: NotificationTarget) {
+    when (target) {
+        NotificationTarget.Payments -> navigate(Routes.PaymentsHistory)
+        NotificationTarget.Orders -> navigate(Routes.MyOrders)
+        NotificationTarget.Otc -> navigate(Routes.OtcOffersAndContracts)
+        NotificationTarget.Funds -> navigate(Routes.FundsList)
+        is NotificationTarget.Fund -> navigate(Routes.FundDetails(target.fundId))
+        NotificationTarget.Cards -> navigate(Routes.Cards)
+        NotificationTarget.Loans -> navigate(Routes.Loans)
+        NotificationTarget.Accounts -> navigate(Routes.AccountsList)
+        is NotificationTarget.QuickApprovePayment -> navigate(
+            Routes.QuickApprovePayment(
+                paymentId = target.paymentId,
+                notificationCreatedAt = target.notificationCreatedAt
+            )
+        )
+    }
 }
 
 private fun androidx.navigation.NavGraphBuilder.addTradingRoutes(navController: NavHostController) {
@@ -350,6 +413,14 @@ private fun androidx.navigation.NavGraphBuilder.addEmployeeRoutes(navController:
             onCreated = { navController.popBackStack() }
         )
     }
+    // B7 / Spec C3 §69 — Audit log portal (supervisor/admin only).
+    composable<Routes.AuditLog> {
+        AuditLogScreen(onBack = { navController.popBackStack() })
+    }
+    // B10 / Spec C4 §13 — OTC istorija pregovora (supervisor/admin only).
+    composable<Routes.OtcNegotiationHistory> {
+        OtcNegotiationHistoryScreen(onBack = { navController.popBackStack() })
+    }
 }
 
 private fun androidx.navigation.NavGraphBuilder.addOtcAndFundsRoutes(navController: NavHostController) {
@@ -424,5 +495,11 @@ private fun NavHostController.handleHomeAction(action: HomeAction) {
         HomeAction.OpenEmployeeAllLoans -> navigate(Routes.EmployeeAllLoans)
         HomeAction.OpenMarginCreate -> navigate(Routes.MarginAccountCreate)
         HomeAction.OpenSavings -> navigate(Routes.SavingsList)
+        HomeAction.OpenNotifications -> navigate(Routes.Notifications)
+        HomeAction.OpenAuditLog -> navigate(Routes.AuditLog)
+        HomeAction.OpenOtcNegotiationHistory -> navigate(Routes.OtcNegotiationHistory)
+        HomeAction.OpenWatchlist -> navigate(Routes.Watchlist)
+        HomeAction.OpenPriceAlerts -> navigate(Routes.PriceAlerts)
+        HomeAction.OpenRecurringOrders -> navigate(Routes.RecurringOrders)
     }
 }

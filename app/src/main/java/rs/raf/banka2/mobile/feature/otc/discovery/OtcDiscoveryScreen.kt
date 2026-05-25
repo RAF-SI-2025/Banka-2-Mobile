@@ -93,6 +93,15 @@ fun OtcDiscoveryScreen(
                 .fillMaxSize()
                 .padding(horizontal = 16.dp)
         ) {
+            // ME-04 fix: CLIENT bez TRADE_STOCKS permisije ne moze trgovati hartijama (spec T4A-017).
+            if (!state.canTrade) {
+                EmptyState(
+                    icon = Icons.Filled.Storefront,
+                    title = "Nemate dozvolu za trgovinu hartijama",
+                    description = "Kontaktirajte svog zaposlenog u banci da Vam odobri trgovinu hartijama (TRADE_STOCKS permisija)."
+                )
+                return@Column
+            }
             ScopeTabRow(state.scope, viewModel::setScope)
             Spacer(Modifier.height(8.dp))
             ErrorBanner(state.error)

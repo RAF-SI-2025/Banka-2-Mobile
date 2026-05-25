@@ -16,6 +16,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.MonetizationOn
 import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Sell
@@ -49,6 +50,7 @@ import rs.raf.banka2.mobile.core.ui.components.EmptyState
 import rs.raf.banka2.mobile.core.ui.components.ErrorBanner
 import rs.raf.banka2.mobile.core.ui.components.GlassCard
 import rs.raf.banka2.mobile.core.ui.components.SecondaryButton
+import rs.raf.banka2.mobile.data.dto.dividend.DividendPayoutDto
 import rs.raf.banka2.mobile.data.dto.portfolio.PortfolioItemDto
 import rs.raf.banka2.mobile.data.dto.tax.TaxBreakdownItemDto
 
@@ -152,11 +154,18 @@ fun PortfolioScreen(
                 }
             }
             items(state.positions, key = { it.id }) { item ->
+                val isStock = !item.isOption && item.listingType.equals("STOCK", ignoreCase = true)
                 PortfolioRow(
                     item = item,
                     onSell = { item.listingId?.let(onSell) },
                     onPublic = { publicTarget = item },
-                    onExercise = { item.optionId?.let { id -> viewModel.exerciseOption(id) } }
+                    onExercise = { item.optionId?.let { id -> viewModel.exerciseOption(id) } },
+                    showDividends = isStock,
+                    dividendsExpanded = state.expandedDividendPositionId == item.id,
+                    onToggleDividends = { viewModel.toggleDividends(item.id) },
+                    dividendsLoading = state.dividendsLoading && state.expandedDividendPositionId == item.id,
+                    dividendsError = state.dividendsError.takeIf { state.expandedDividendPositionId == item.id },
+                    dividends = state.dividendsByPosition[item.id].orEmpty().takeIf { state.expandedDividendPositionId == item.id }
                 )
             }
         }
@@ -230,7 +239,13 @@ private fun PortfolioRow(
     item: PortfolioItemDto,
     onSell: () -> Unit,
     onPublic: () -> Unit,
-    onExercise: () -> Unit
+    onExercise: () -> Unit,
+    showDividends: Boolean = false,
+    dividendsExpanded: Boolean = false,
+    onToggleDividends: () -> Unit = {},
+    dividendsLoading: Boolean = false,
+    dividendsError: String? = null,
+    dividends: List<DividendPayoutDto>? = null
 ) {
     GlassCard(modifier = Modifier.fillMaxWidth()) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -287,6 +302,111 @@ private fun PortfolioRow(
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 SecondaryButton(text = "Javna ponuda", onClick = onPublic, leadingIcon = Icons.Filled.Public, modifier = Modifier.weight(1f))
                 DangerButton(text = "Prodaj", onClick = onSell, leadingIcon = Icons.Filled.Sell, modifier = Modifier.weight(1f))
+            }
+            if (showDividends) {
+                Spacer(Modifier.height(8.dp))
+                // C3 #11: tap "Dividende" otvara per-poziciju istoriju primljenih dividendi.
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(onClick = onToggleDividends)
+                        .padding(vertical = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            Icons.Filled.MonetizationOn,
+                            null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.height(16.dp)
+                        )
+                        Text(
+                            " Dividende",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                    Icon(
+                        if (dividendsExpanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                        contentDescription = if (dividendsExpanded) "Sakrij" else "Prikazi dividende",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+                if (dividendsExpanded) {
+                    DividendHistoryExpansion(
+                        dividends = dividends.orEmpty(),
+                        loading = dividendsLoading,
+                        error = dividendsError
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DividendHistoryExpansion(
+    dividends: List<DividendPayoutDto>,
+    loading: Boolean,
+    error: String?
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 4.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        when {
+            loading -> Text(
+                "Ucitavanje dividendi...",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            error != null -> Text(
+                error,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error
+            )
+            dividends.isEmpty() -> Text(
+                "Jos uvek nema isplata dividendi za ovu poziciju.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            else -> {
+                Text(
+                    "Poslednje isplate (${dividends.size}):",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.SemiBold
+                )
+                dividends.take(8).forEach { d ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                "${d.stockTicker ?: "—"} · ${d.paymentDate ?: "?"}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                "Bruto ${MoneyFormatter.format(d.grossAmount, 2)} ${d.currencyCode ?: ""} · porez ${MoneyFormatter.format(d.tax, 2)}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Text(
+                            "${MoneyFormatter.format(d.netAmount, 2)} ${d.currencyCode ?: ""}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.tertiary,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
             }
         }
     }

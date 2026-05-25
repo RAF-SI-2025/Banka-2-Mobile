@@ -45,6 +45,11 @@ sealed interface SessionState {
 
 /**
  * Profil koji se prikazuje u sidebar-u i koji koriste guards.
+ *
+ * ME-04 fix: dodato `canTradeStocks` polje koje se cita iz BE `ClientResponseDto.canTradeStocks`.
+ * Default je `true` za backwards-compat — ako BE polje nije setovano (legacy seed), klijent
+ * moze da trguje (CLAUDE.md: "default TRUE radi backwards-compat"). Spec T4A-017 / Celina 4
+ * §137-141: supervizor moze revokovati per-klijent kroz `PATCH /clients/{id}/trading`.
  */
 data class UserProfile(
     val id: Long,
@@ -52,10 +57,18 @@ data class UserProfile(
     val firstName: String,
     val lastName: String,
     val role: UserRole,
-    val permissions: Set<String>
+    val permissions: Set<String>,
+    val canTradeStocks: Boolean = true
 ) {
     val fullName: String get() = "$firstName $lastName".trim().ifBlank { email }
 
     fun has(permission: String): Boolean =
         permissions.any { it.equals(permission, ignoreCase = true) }
+
+    /**
+     * ME-04: klijenti moraju imati canTradeStocks=true da bi pristupili Securities/OTC.
+     * Employee/Admin/Supervisor uvek imaju pristup; samo CLIENT ima ovaj gating.
+     */
+    val canAccessTrading: Boolean
+        get() = !role.isClient || canTradeStocks
 }

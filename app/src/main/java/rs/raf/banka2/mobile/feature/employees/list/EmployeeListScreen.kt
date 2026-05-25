@@ -107,11 +107,13 @@ fun EmployeeListScreen(
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
+                            // ME-12 fix: derived flagovi handluju i legacy boolean polja i nov format gde
+                            // BE salje samo permissions: List<String>.
                             val statusLabel = when {
                                 employee.active == false -> "Neaktivan"
-                                employee.isAdmin == true -> "Admin"
-                                employee.isSupervisor == true -> "Supervizor"
-                                employee.isAgent == true -> "Agent"
+                                employee.derivedIsAdmin -> "Admin"
+                                employee.derivedIsSupervisor -> "Supervizor"
+                                employee.derivedIsAgent -> "Agent"
                                 else -> "Zaposleni"
                             }
                             Text(

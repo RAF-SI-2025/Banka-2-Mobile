@@ -120,6 +120,63 @@ fun FundDetailsScreen(
                         }
                     }
                 }
+                // B12 / Spec C4 §15 — statisticke metrike fonda
+                state.statistics?.let { stats ->
+                    item {
+                        GlassCard(modifier = Modifier.fillMaxWidth()) {
+                            Text(
+                                "Statistike",
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                if (stats.sufficientHistory)
+                                    "Spec C4 §15 · ${stats.snapshotCount} dnevnih snimaka"
+                                else
+                                    "Nema dovoljno istorije (potrebno 30+ snimaka, trenutno ${stats.snapshotCount})",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            if (stats.sufficientHistory) {
+                                Spacer(Modifier.height(10.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    StatBlock(
+                                        label = "Godisnji prinos",
+                                        value = stats.annualizedReturnPercent?.let {
+                                            "${if (it >= 0) "+" else ""}${"%.2f".format(it)}%"
+                                        } ?: "—",
+                                        positive = (stats.annualizedReturnPercent ?: 0.0) >= 0
+                                    )
+                                    StatBlock(
+                                        label = "Sharpe",
+                                        value = stats.rewardToVariabilityRatio?.let { "%.2f".format(it) } ?: "—",
+                                        positive = (stats.rewardToVariabilityRatio ?: 0.0) >= 0
+                                    )
+                                }
+                                Spacer(Modifier.height(8.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    StatBlock(
+                                        label = "Maksimalni pad",
+                                        value = stats.maxDrawdownPercent?.let { "%.2f".format(it) + "%" } ?: "—",
+                                        positive = false
+                                    )
+                                    StatBlock(
+                                        label = "Volatilnost",
+                                        value = stats.volatilityPercent?.let { "%.2f".format(it) + "%" } ?: "—",
+                                        positive = true
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
                 state.myPosition?.let { position ->
                     item {
                         GlassCard(modifier = Modifier.fillMaxWidth()) {
@@ -302,6 +359,23 @@ private fun WithdrawDialog(
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Otkazi") } }
     )
+}
+
+@Composable
+private fun StatBlock(label: String, value: String, positive: Boolean) {
+    Column {
+        Text(
+            label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            value,
+            style = MaterialTheme.typography.titleMedium,
+            color = if (positive) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error,
+            fontWeight = FontWeight.SemiBold
+        )
+    }
 }
 
 @Composable

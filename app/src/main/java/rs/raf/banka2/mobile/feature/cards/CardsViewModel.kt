@@ -11,13 +11,17 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import rs.raf.banka2.mobile.core.network.ApiResult
+import rs.raf.banka2.mobile.data.dto.account.AccountDto
 import rs.raf.banka2.mobile.data.dto.card.CardDto
+import rs.raf.banka2.mobile.data.repository.AccountRepository
 import rs.raf.banka2.mobile.data.repository.CardRepository
+import java.math.BigDecimal
 import javax.inject.Inject
 
 @HiltViewModel
 class CardsViewModel @Inject constructor(
-    private val repository: CardRepository
+    private val repository: CardRepository,
+    private val accountRepository: AccountRepository
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(CardsState())
@@ -26,7 +30,10 @@ class CardsViewModel @Inject constructor(
     private val _events = Channel<CardEvent>(Channel.BUFFERED)
     val events = _events.receiveAsFlow()
 
-    init { refresh() }
+    init {
+        refresh()
+        viewModelScope.launch { loadAccounts() }
+    }
 
     fun refresh() = viewModelScope.launch {
         _state.update { it.copy(loading = true, error = null) }
@@ -72,7 +79,8 @@ class CardsViewModel @Inject constructor(
         }
     }
 
-    fun updateLimit(id: Long, newLimit: Double) = viewModelScope.launch {
+    /** ME-11: prima BigDecimal. */
+    fun updateLimit(id: Long, newLimit: BigDecimal) = viewModelScope.launch {
         when (val result = repository.updateLimit(id, newLimit)) {
             is ApiResult.Success -> {
                 _events.send(CardEvent.Toast("Limit je azuriran."))
@@ -82,11 +90,47 @@ class CardsViewModel @Inject constructor(
             ApiResult.Loading -> Unit
         }
     }
+
+    /**
+     * ME-03: top-up INTERNET_PREPAID kartice — prebacuje iznos sa Account-a na karticu.
+     */
+    fun topUpCard(cardId: Long, sourceAccountId: Long, amount: BigDecimal) = viewModelScope.launch {
+        when (val result = repository.topUp(cardId, sourceAccountId, amount)) {
+            is ApiResult.Success -> {
+                _events.send(CardEvent.Toast("Kartica je dopunjena."))
+                refresh()
+            }
+            is ApiResult.Failure -> _state.update { it.copy(error = result.error.message) }
+            ApiResult.Loading -> Unit
+        }
+    }
+
+    /**
+     * ME-03: withdraw sa INTERNET_PREPAID kartice nazad na Account.
+     */
+    fun withdrawFromCard(cardId: Long, targetAccountId: Long, amount: BigDecimal) = viewModelScope.launch {
+        when (val result = repository.withdrawFromCard(cardId, targetAccountId, amount)) {
+            is ApiResult.Success -> {
+                _events.send(CardEvent.Toast("Sredstva su povucena na racun."))
+                refresh()
+            }
+            is ApiResult.Failure -> _state.update { it.copy(error = result.error.message) }
+            ApiResult.Loading -> Unit
+        }
+    }
+
+    private suspend fun loadAccounts() {
+        when (val result = accountRepository.getMyAccounts()) {
+            is ApiResult.Success -> _state.update { it.copy(accounts = result.data) }
+            else -> Unit
+        }
+    }
 }
 
 data class CardsState(
     val loading: Boolean = false,
     val cards: List<CardDto> = emptyList(),
+    val accounts: List<AccountDto> = emptyList(),
     val error: String? = null
 )
 

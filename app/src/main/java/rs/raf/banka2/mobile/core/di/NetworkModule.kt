@@ -15,9 +15,11 @@ import rs.raf.banka2.mobile.core.network.AuthInterceptor
 import rs.raf.banka2.mobile.core.network.TokenAuthenticator
 import rs.raf.banka2.mobile.data.api.AccountApi
 import rs.raf.banka2.mobile.data.api.ActuaryApi
+import rs.raf.banka2.mobile.data.api.AuditApi
 import rs.raf.banka2.mobile.data.api.AuthApi
 import rs.raf.banka2.mobile.data.api.CardApi
 import rs.raf.banka2.mobile.data.api.ClientApi
+import rs.raf.banka2.mobile.data.api.DividendApi
 import rs.raf.banka2.mobile.data.api.EmployeeAdminApi
 import rs.raf.banka2.mobile.data.api.EmployeeApi
 import rs.raf.banka2.mobile.data.api.ExchangeApi
@@ -26,16 +28,20 @@ import rs.raf.banka2.mobile.data.api.FundApi
 import rs.raf.banka2.mobile.data.api.ListingApi
 import rs.raf.banka2.mobile.data.api.LoanApi
 import rs.raf.banka2.mobile.data.api.MarginApi
+import rs.raf.banka2.mobile.data.api.NotificationApi
 import rs.raf.banka2.mobile.data.api.OptionApi
 import rs.raf.banka2.mobile.data.api.OrderApi
 import rs.raf.banka2.mobile.data.api.OtcApi
 import rs.raf.banka2.mobile.data.api.PaymentApi
 import rs.raf.banka2.mobile.data.api.PortfolioApi
+import rs.raf.banka2.mobile.data.api.PriceAlertApi
 import rs.raf.banka2.mobile.data.api.ProfitBankApi
 import rs.raf.banka2.mobile.data.api.RecipientApi
+import rs.raf.banka2.mobile.data.api.RecurringOrderApi
 import rs.raf.banka2.mobile.data.api.SavingsApi
 import rs.raf.banka2.mobile.data.api.TaxApi
 import rs.raf.banka2.mobile.data.api.TransferApi
+import rs.raf.banka2.mobile.data.api.WatchlistApi
 import java.util.concurrent.TimeUnit
 import javax.inject.Named
 import javax.inject.Singleton
@@ -195,6 +201,38 @@ object NetworkModule {
     @Singleton
     fun provideSavingsApi(retrofit: Retrofit): SavingsApi =
         retrofit.create(SavingsApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideNotificationApi(retrofit: Retrofit): NotificationApi =
+        retrofit.create(NotificationApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideWatchlistApi(retrofit: Retrofit): WatchlistApi =
+        retrofit.create(WatchlistApi::class.java)
+
+    @Provides
+    @Singleton
+    fun providePriceAlertApi(retrofit: Retrofit): PriceAlertApi =
+        retrofit.create(PriceAlertApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideRecurringOrderApi(retrofit: Retrofit): RecurringOrderApi =
+        retrofit.create(RecurringOrderApi::class.java)
+
+    /** B7 / Spec C3 §69: audit log API (supervisor/admin only). */
+    @Provides
+    @Singleton
+    fun provideAuditApi(retrofit: Retrofit): AuditApi =
+        retrofit.create(AuditApi::class.java)
+
+    /** B9 / Spec C3 §11: dividend payout API. */
+    @Provides
+    @Singleton
+    fun provideDividendApi(retrofit: Retrofit): DividendApi =
+        retrofit.create(DividendApi::class.java)
 
     const val REFRESH_CLIENT = "refresh-okhttp"
 }

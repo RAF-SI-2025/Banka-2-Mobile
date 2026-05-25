@@ -73,6 +73,24 @@ fun CreateOrderScreen(
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            // ME-04: CLIENT bez TRADE_STOCKS permisije ne moze kreirati order (spec T4A-017).
+            if (!state.canTrade) {
+                GlassCard(modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        "Nemate dozvolu za trgovinu hartijama",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.error,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "Vas nalog trenutno nema TRADE_STOCKS permisiju. Kontaktirajte svog zaposlenog u banci ako zelite da trgujete hartijama.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                return@Column
+            }
             state.listing?.let { listing ->
                 GlassCard(modifier = Modifier.fillMaxWidth()) {
                     Text(listing.name, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)

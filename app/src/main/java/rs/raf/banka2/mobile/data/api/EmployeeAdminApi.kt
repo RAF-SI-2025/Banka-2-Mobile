@@ -11,12 +11,15 @@ import retrofit2.http.Query
 import rs.raf.banka2.mobile.data.dto.common.CreateEmployeeRequestDto
 import rs.raf.banka2.mobile.data.dto.common.EmployeeDto
 import rs.raf.banka2.mobile.data.dto.common.PageResponse
-import rs.raf.banka2.mobile.data.dto.common.UpdateEmployeePermissionsDto
 import rs.raf.banka2.mobile.data.dto.common.UpdateEmployeeRequestDto
 
 /**
  * Admin API za upravljanje zaposlenima. Razdvojeno od `EmployeeApi` koji se koristi
  * samo za login flow (search-by-email) — ovaj interfejs pokriva CRUD operacije.
+ *
+ * ME-13 fix: uklonjen `PATCH /employees/{id}/permissions` endpoint (BE ga ne podrzava).
+ * Sve permission izmene idu kroz `PUT /employees/{id}` sa `permissions` poljem u body-ju
+ * (ME-10 atomic update — `active` + ostala polja + `permissions` u jednom pozivu).
  */
 interface EmployeeAdminApi {
 
@@ -47,10 +50,4 @@ interface EmployeeAdminApi {
 
     @GET("employees/{id}/permissions")
     suspend fun getPermissions(@Path("id") id: Long): Response<List<String>>
-
-    @PATCH("employees/{id}/permissions")
-    suspend fun updatePermissions(
-        @Path("id") id: Long,
-        @Body body: UpdateEmployeePermissionsDto
-    ): Response<EmployeeDto>
 }

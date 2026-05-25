@@ -300,6 +300,10 @@ private fun EmployeeQuickActions(role: UserRole, onNavigate: (HomeAction) -> Uni
             add(EmpQuickItem("Profit Banke", "Aktuari + fondovi", Icons.Filled.AccountBalance, HomeAction.OpenProfitBank, listOf(Color(0xFF06B6D4), Color(0xFF0E7490))))
             // Spec Celina 4 (Nova) §137-141: supervizori imaju OTC pristup + Investicioni fondovi (discovery + create)
             add(EmpQuickItem("OTC", "Trgovina ponuda", Icons.Filled.ShoppingCart, HomeAction.OpenOtc, listOf(Color(0xFF6366F1), Color(0xFF4F46E5))))
+            // B7 / Spec C3 §69 — Audit log (supervisor/admin only).
+            add(EmpQuickItem("Audit log", "Revizioni dnevnik", Icons.Filled.Receipt, HomeAction.OpenAuditLog, listOf(Color(0xFF6366F1), Color(0xFF1E40AF))))
+            // B10 / Spec C4 §13 — OTC istorija pregovora (supervisor/admin only).
+            add(EmpQuickItem("OTC istorija", "Pregovori", Icons.Filled.ShoppingCart, HomeAction.OpenOtcNegotiationHistory, listOf(Color(0xFFA855F7), Color(0xFFEC4899))))
             add(EmpQuickItem("Berze", "Test mode", Icons.AutoMirrored.Filled.ShowChart, HomeAction.OpenExchangesManagement, listOf(Color(0xFF8B5CF6), Color(0xFF6D28D9))))
             add(EmpQuickItem("Marzni +", "Novi margin", Icons.Filled.Add, HomeAction.OpenMarginCreate, listOf(Color(0xFFE11D48), Color(0xFFBE123C))))
         }

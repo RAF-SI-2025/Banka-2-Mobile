@@ -19,6 +19,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import rs.raf.banka2.mobile.core.auth.UserRole
 import rs.raf.banka2.mobile.core.ui.components.AnimatedBackground
 import rs.raf.banka2.mobile.core.ui.components.BankaScaffold
+import rs.raf.banka2.mobile.core.ui.components.NotificationBellButton
 import rs.raf.banka2.mobile.core.ui.theme.ThemeMode
 
 @Composable
@@ -38,6 +39,8 @@ fun HomeScreen(
             }
         },
         actions = {
+            // TODO_final C2 #4 — In-app notifications bell sa unread badge.
+            NotificationBellButton(onClick = { onNavigate(HomeAction.OpenNotifications) })
             IconButton(onClick = viewModel::toggleTheme) {
                 Icon(
                     imageVector = if (isDark) Icons.Filled.LightMode else Icons.Filled.DarkMode,

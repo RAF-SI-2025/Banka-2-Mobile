@@ -82,6 +82,15 @@ object Routes {
     // ─── Mobile-specific ──────────────────────────────────
     @Serializable data object Otp
 
+    // ─── TODO_final C2 #4 — Notifikacije ───────────────────
+    @Serializable data object Notifications
+
+    // ─── TODO_final Mobile bonus #7 — Quick Approve ────────
+    @Serializable data class QuickApprovePayment(
+        val paymentId: Long,
+        val notificationCreatedAt: String = ""
+    )
+
     // ─── Stednja (Celina 2 extra) ─────────────────────────
     @Serializable data object SavingsList
     @Serializable data object SavingsNewDeposit
@@ -96,4 +105,18 @@ object Routes {
     @Serializable data object EmployeeAccountCreate
     @Serializable data class ClientEditRoute(val clientId: Long)
     @Serializable data class MarginTransactionsRoute(val accountId: Long)
+
+    // ─── TODO_final 25.05.2026 ────────────────────────────
+    /** B7 / C3 §69 — Audit log portal (supervisor/admin only). */
+    @Serializable data object AuditLog
+    /** B10 / C4 §13 — OTC istorija pregovora (supervisor/admin only). */
+    @Serializable data object OtcNegotiationHistory
+
+    // ─── TODO_final FE2/FE3 26.05.2026 ────────────────────
+    /** FE2 / C3 #8 — Watchlist (liste pracenja hartija). */
+    @Serializable data object Watchlist
+    /** FE2 / C3 #6 — Cenovni alarmi (Price Alert). */
+    @Serializable data object PriceAlerts
+    /** FE3 / C3 #10 — Trajni nalozi (DCA / RecurringOrder). */
+    @Serializable data object RecurringOrders
 }

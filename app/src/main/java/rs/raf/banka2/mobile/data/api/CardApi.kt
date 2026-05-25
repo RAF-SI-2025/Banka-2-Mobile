@@ -12,6 +12,8 @@ import rs.raf.banka2.mobile.data.dto.card.CardLimitUpdateDto
 import rs.raf.banka2.mobile.data.dto.card.CardRequestCreateDto
 import rs.raf.banka2.mobile.data.dto.card.CardRequestRejectDto
 import rs.raf.banka2.mobile.data.dto.card.CardRequestResponseDto
+import rs.raf.banka2.mobile.data.dto.card.CardTopUpRequest
+import rs.raf.banka2.mobile.data.dto.card.CardWithdrawRequest
 import rs.raf.banka2.mobile.data.dto.common.PageResponse
 
 interface CardApi {
@@ -35,6 +37,25 @@ interface CardApi {
     suspend fun updateLimit(
         @Path("id") id: Long,
         @Body body: CardLimitUpdateDto
+    ): Response<CardDto>
+
+    /**
+     * ME-03: dopuna INTERNET_PREPAID kartice — prebacuje iznos sa Account-a na Card.prepaidBalance.
+     * Spec C2 §270 (14.05.2026 vece-3 nadogradnja). BE endpoint: POST /cards/{id}/top-up.
+     */
+    @POST("cards/{id}/top-up")
+    suspend fun topUpCard(
+        @Path("id") id: Long,
+        @Body body: CardTopUpRequest
+    ): Response<CardDto>
+
+    /**
+     * ME-03: povlacenje sa INTERNET_PREPAID kartice nazad na Account.
+     */
+    @POST("cards/{id}/withdraw")
+    suspend fun withdrawFromCard(
+        @Path("id") id: Long,
+        @Body body: CardWithdrawRequest
     ): Response<CardDto>
 
     @POST("cards/requests")

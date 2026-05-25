@@ -28,9 +28,42 @@ class MyOrdersViewModel @Inject constructor(
 
     init { refresh() }
 
+    fun setStatus(value: String?) {
+        _state.update { it.copy(filterStatus = value) }
+        refresh()
+    }
+
+    fun setListingType(value: String?) {
+        _state.update { it.copy(filterListingType = value) }
+        refresh()
+    }
+
+    fun setDateFrom(value: String) = _state.update { it.copy(filterDateFrom = value) }
+    fun setDateTo(value: String) = _state.update { it.copy(filterDateTo = value) }
+
+    fun applyFilters() = refresh()
+
+    fun resetFilters() {
+        _state.update {
+            it.copy(
+                filterStatus = null,
+                filterListingType = null,
+                filterDateFrom = "",
+                filterDateTo = ""
+            )
+        }
+        refresh()
+    }
+
     fun refresh() = viewModelScope.launch {
         _state.update { it.copy(loading = true, error = null) }
-        when (val result = repository.myOrders()) {
+        val s = _state.value
+        when (val result = repository.myOrdersFiltered(
+            status = s.filterStatus,
+            listingType = s.filterListingType,
+            dateFrom = s.filterDateFrom,
+            dateTo = s.filterDateTo
+        )) {
             is ApiResult.Success -> _state.update { it.copy(loading = false, orders = result.data) }
             is ApiResult.Failure -> _state.update {
                 it.copy(loading = false, error = result.error.message)
@@ -54,7 +87,33 @@ class MyOrdersViewModel @Inject constructor(
 data class MyOrdersState(
     val loading: Boolean = false,
     val orders: List<OrderDto> = emptyList(),
-    val error: String? = null
+    val error: String? = null,
+    /** C3 #7 / Spec C3 §7 — filteri istorije ordera. */
+    val filterStatus: String? = null,           // PENDING/APPROVED/DECLINED/DONE/PARTIAL_FILLED
+    val filterListingType: String? = null,      // STOCK/FUTURES/FOREX/OPTION
+    val filterDateFrom: String = "",
+    val filterDateTo: String = ""
+)
+
+/** Lista podrzanih statusa za filter chip. */
+val MY_ORDERS_STATUS_OPTIONS: List<String> = listOf("ALL", "PENDING", "APPROVED", "DONE", "PARTIAL_FILLED", "DECLINED", "CANCELLED")
+val MY_ORDERS_STATUS_LABEL_SR: Map<String, String> = mapOf(
+    "ALL" to "Sve",
+    "PENDING" to "Ceka",
+    "APPROVED" to "Aktivan",
+    "DONE" to "Zavrsen",
+    "PARTIAL_FILLED" to "Parcijalan",
+    "DECLINED" to "Odbijen",
+    "CANCELLED" to "Otkazan"
+)
+
+val MY_ORDERS_LISTING_TYPE_OPTIONS: List<String> = listOf("ALL", "STOCK", "FUTURES", "FOREX", "OPTION")
+val MY_ORDERS_LISTING_TYPE_LABEL_SR: Map<String, String> = mapOf(
+    "ALL" to "Sve",
+    "STOCK" to "Akcije",
+    "FUTURES" to "Futures",
+    "FOREX" to "Forex",
+    "OPTION" to "Opcije"
 )
 
 sealed interface MyOrdersEvent {

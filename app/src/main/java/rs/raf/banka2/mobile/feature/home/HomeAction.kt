@@ -33,4 +33,15 @@ sealed interface HomeAction {
     data object OpenEmployeeAllLoans : HomeAction
     data object OpenMarginCreate : HomeAction
     data object OpenSavings : HomeAction
+    data object OpenNotifications : HomeAction
+    /** B7 / C3 §69 — Audit log portal (supervisor/admin only). */
+    data object OpenAuditLog : HomeAction
+    /** B10 / C4 §13 — OTC istorija pregovora (supervisor/admin only). */
+    data object OpenOtcNegotiationHistory : HomeAction
+    /** FE2 / C3 #8 — Watchlist. */
+    data object OpenWatchlist : HomeAction
+    /** FE2 / C3 #6 — Cenovni alarmi. */
+    data object OpenPriceAlerts : HomeAction
+    /** FE3 / C3 #10 — DCA / RecurringOrder. */
+    data object OpenRecurringOrders : HomeAction
 }

@@ -18,6 +18,8 @@ import rs.raf.banka2.mobile.data.dto.otc.OtcInterbankOfferApiDto
 import rs.raf.banka2.mobile.data.dto.otc.OtcListingDto
 import rs.raf.banka2.mobile.data.dto.otc.OtcOfferDto
 import rs.raf.banka2.mobile.data.dto.otc.SagaStatusDto
+import rs.raf.banka2.mobile.data.dto.otchistory.OtcNegotiationHistoryDto
+import rs.raf.banka2.mobile.data.dto.common.PageResponse
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -176,4 +178,31 @@ class OtcRepository @Inject constructor(
         safeApiCall { api.listMyInterContracts(null) }.map { list ->
             list.firstOrNull { it.id == foreignId }?.status ?: "UNKNOWN"
         }
+
+    /**
+     * B10 / Spec C4 §13: paginiran pregled OTC pregovora.
+     * Supervisor/admin only — BE vraca 403 inace.
+     */
+    suspend fun negotiationHistory(
+        status: String? = null,
+        modifiedById: Long? = null,
+        from: String? = null,
+        to: String? = null,
+        page: Int = 0,
+        size: Int = 20
+    ): ApiResult<PageResponse<OtcNegotiationHistoryDto>> =
+        safeApiCall {
+            api.negotiationHistory(
+                status = status?.takeIf { it.isNotBlank() && it != "ALL" },
+                modifiedById = modifiedById,
+                from = from?.takeIf { it.isNotBlank() },
+                to = to?.takeIf { it.isNotBlank() },
+                page = page,
+                size = size
+            )
+        }
+
+    /** Hronoloski lanac kontraponuda jednog pregovora (sve iteracije). */
+    suspend fun negotiationHistoryChain(negotiationId: Long): ApiResult<List<OtcNegotiationHistoryDto>> =
+        safeApiCall { api.negotiationHistoryChain(negotiationId) }
 }

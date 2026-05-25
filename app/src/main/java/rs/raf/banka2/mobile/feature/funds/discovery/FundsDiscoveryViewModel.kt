@@ -15,6 +15,7 @@ import rs.raf.banka2.mobile.core.auth.SessionState
 import rs.raf.banka2.mobile.core.network.ApiResult
 import rs.raf.banka2.mobile.data.dto.fund.FundPositionDto
 import rs.raf.banka2.mobile.data.dto.fund.FundSummaryDto
+import rs.raf.banka2.mobile.data.dto.fundstatistics.FundStatisticsDto
 import rs.raf.banka2.mobile.data.repository.FundRepository
 import javax.inject.Inject
 
@@ -66,6 +67,22 @@ class FundsDiscoveryViewModel @Inject constructor(
         viewModelScope.launch { loadMyPositions() }
     }
 
+    /**
+     * B12 / Spec C4 §15: za svaki fond u listi povuci statistiku (annualReturn,
+     * sharpe, maxDrawdown, volatility). Pokrece se nakon `loadFunds`. Tihi
+     * fallback — fond koji nema dovoljno istorije ne pojavljuje se u mapi.
+     */
+    private suspend fun loadStatistics(funds: List<FundSummaryDto>) {
+        val results = mutableMapOf<Long, FundStatisticsDto>()
+        funds.forEach { fund ->
+            when (val r = repository.statistics(fund.id)) {
+                is ApiResult.Success -> results[fund.id] = r.data
+                else -> Unit // tihi fallback — UI prikazuje "—"
+            }
+        }
+        _state.update { it.copy(statisticsByFundId = results) }
+    }
+
     private suspend fun loadFunds() {
         _state.update { it.copy(loading = true, error = null) }
         val current = _state.value
@@ -74,7 +91,11 @@ class FundsDiscoveryViewModel @Inject constructor(
             sort = current.sortField.api,
             direction = if (current.sortAscending) "ASC" else "DESC"
         )) {
-            is ApiResult.Success -> _state.update { it.copy(loading = false, funds = result.data) }
+            is ApiResult.Success -> {
+                _state.update { it.copy(loading = false, funds = result.data) }
+                // B12: fetch statistics paralelno (tihi fallback ako nema dovoljno istorije).
+                loadStatistics(result.data)
+            }
             is ApiResult.Failure -> _state.update {
                 it.copy(loading = false, error = result.error.message)
             }
@@ -105,5 +126,7 @@ data class FundsDiscoveryState(
     val sortAscending: Boolean = false,
     val loading: Boolean = false,
     val canCreateFund: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
+    /** B12: per-fund statistike (annualReturn, sharpe, maxDD, volatility). */
+    val statisticsByFundId: Map<Long, FundStatisticsDto> = emptyMap()
 )

@@ -6,7 +6,6 @@ import rs.raf.banka2.mobile.core.network.safeApiCall
 import rs.raf.banka2.mobile.data.api.EmployeeAdminApi
 import rs.raf.banka2.mobile.data.dto.common.CreateEmployeeRequestDto
 import rs.raf.banka2.mobile.data.dto.common.EmployeeDto
-import rs.raf.banka2.mobile.data.dto.common.UpdateEmployeePermissionsDto
 import rs.raf.banka2.mobile.data.dto.common.UpdateEmployeeRequestDto
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -37,12 +36,28 @@ class EmployeeAdminRepository @Inject constructor(
     suspend fun getPermissions(id: Long): ApiResult<List<String>> =
         safeApiCall { api.getPermissions(id) }
 
+    /**
+     * ME-13 fix: BE nema PATCH /employees/{id}/permissions endpoint.
+     * Delegira na `update()` sa permissions+active u jednom body-ju (ME-10 atomic).
+     */
     suspend fun updatePermissions(
         id: Long,
         isAgent: Boolean,
         isSupervisor: Boolean,
-        isAdmin: Boolean? = null
-    ): ApiResult<EmployeeDto> = safeApiCall {
-        api.updatePermissions(id, UpdateEmployeePermissionsDto(isAgent, isSupervisor, isAdmin))
+        isAdmin: Boolean? = null,
+        active: Boolean? = null
+    ): ApiResult<EmployeeDto> {
+        val permissions = buildList {
+            if (isAdmin == true) add("ADMIN")
+            if (isSupervisor) add("SUPERVISOR")
+            if (isAgent) add("AGENT")
+        }
+        return update(
+            id = id,
+            request = UpdateEmployeeRequestDto(
+                permissions = permissions,
+                active = active
+            )
+        )
     }
 }

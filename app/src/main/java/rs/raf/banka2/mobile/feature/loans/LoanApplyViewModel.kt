@@ -40,6 +40,10 @@ class LoanApplyViewModel @Inject constructor(
     fun setEmployer(value: String) = _state.update { it.copy(employer = value) }
     fun setAccount(account: AccountDto) = _state.update { it.copy(account = account) }
 
+    /**
+     * ME-09: pre nego pozove BE, otvaramo OTP modal (validacija prolazi → showVerification=true).
+     * Sam BE poziv ide preko `submitWithOtp(code)`. BE BE-PAY-06 fix zahteva OTP za apply.
+     */
     fun submit() {
         val current = _state.value
         val amount = MoneyFormatter.parse(current.amount)
@@ -53,6 +57,25 @@ class LoanApplyViewModel @Inject constructor(
         if (current.purpose.isBlank()) {
             _state.update { it.copy(error = "Svrha kredita je obavezna.") }; return
         }
+        _state.update {
+            it.copy(
+                error = null,
+                parsedAmount = amount,
+                parsedDuration = duration,
+                showVerification = true
+            )
+        }
+    }
+
+    fun closeVerification() = _state.update { it.copy(showVerification = false) }
+
+    /**
+     * ME-09: posto je OTP unet u VerificationModal-u, salje request sa otpCode.
+     */
+    fun submitWithOtp(code: String) {
+        val current = _state.value
+        val amount = current.parsedAmount ?: return
+        val duration = current.parsedDuration ?: return
         viewModelScope.launch {
             _state.update { it.copy(submitting = true) }
             val request = LoanApplicationDto(
@@ -64,11 +87,12 @@ class LoanApplyViewModel @Inject constructor(
                 accountNumber = current.account?.accountNumber,
                 currency = current.account?.currency,
                 monthlyIncome = MoneyFormatter.parse(current.monthlyIncome),
-                employer = current.employer.takeIf { it.isNotBlank() }
+                employer = current.employer.takeIf { it.isNotBlank() },
+                otpCode = code
             )
             when (val result = loanRepository.apply(request)) {
                 is ApiResult.Success -> {
-                    _state.update { it.copy(submitting = false) }
+                    _state.update { it.copy(submitting = false, showVerification = false) }
                     _events.send(LoanApplyEvent.Submitted)
                 }
                 is ApiResult.Failure -> _state.update {
@@ -99,6 +123,10 @@ data class LoanApplyState(
     val monthlyIncome: String = "",
     val employer: String = "",
     val submitting: Boolean = false,
+    // ME-09: cuvane vrednosti posle validacije, koriste se u submitWithOtp.
+    val parsedAmount: Double? = null,
+    val parsedDuration: Int? = null,
+    val showVerification: Boolean = false,
     val error: String? = null
 )
 

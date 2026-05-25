@@ -59,8 +59,10 @@ fun EmployeeEditScreen(
     var address by remember(state.employee) { mutableStateOf(state.employee?.address.orEmpty()) }
     var position by remember(state.employee) { mutableStateOf(state.employee?.position.orEmpty()) }
     var department by remember(state.employee) { mutableStateOf(state.employee?.department.orEmpty()) }
-    var isAgent by remember(state.employee) { mutableStateOf(state.employee?.isAgent ?: false) }
-    var isSupervisor by remember(state.employee) { mutableStateOf(state.employee?.isSupervisor ?: false) }
+    // ME-12 fix: BE moze poslati isAgent/isSupervisor flagove ili samo permissions list-u —
+    // derivedIs* handluje oba (legacy + nov format).
+    var isAgent by remember(state.employee) { mutableStateOf(state.employee?.derivedIsAgent ?: false) }
+    var isSupervisor by remember(state.employee) { mutableStateOf(state.employee?.derivedIsSupervisor ?: false) }
     var active by remember(state.employee) { mutableStateOf(state.employee?.active ?: true) }
 
     BankaScaffold(

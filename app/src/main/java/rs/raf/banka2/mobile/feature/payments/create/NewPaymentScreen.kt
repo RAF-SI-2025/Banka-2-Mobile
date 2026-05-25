@@ -157,15 +157,25 @@ fun NewPaymentScreen(
             }
             InterbankRoutingHint(state)
             ErrorBanner(state.error)
+            // ME-06: pre OTP modala otvori confirm dialog sa pregledom placanja (T2-005 parity sa FE 12.05).
             PrimaryButton(
                 text = "Potvrdi placanje",
-                onClick = viewModel::openVerification,
+                onClick = viewModel::openConfirmDialog,
                 loading = state.verifying,
                 leadingIcon = Icons.AutoMirrored.Filled.Send,
                 modifier = Modifier.fillMaxWidth()
             )
             Spacer(Modifier.height(8.dp))
         }
+    }
+
+    // ME-06: confirm dialog pre OTP-a — paritet sa FE T2-005.
+    if (state.showConfirmDialog) {
+        PaymentConfirmDialog(
+            state = state,
+            onConfirm = viewModel::confirmAndOpenOtp,
+            onCancel = viewModel::closeConfirmDialog
+        )
     }
 
     VerificationModal(
@@ -180,6 +190,86 @@ fun NewPaymentScreen(
         InterbankProgressDialog(
             progress = progress,
             onDismiss = viewModel::closeInterbankProgress
+        )
+    }
+}
+
+/**
+ * ME-06 fix: confirm dialog koji se otvara pre OTP-a sa pregledom uplate i napomenom
+ * o FX konverziji (ako cross-currency intra-bank) ili 2PC protokolu (ako inter-bank).
+ * Paritet sa FE T2-005 (12.05.2026 vece runda).
+ */
+@Composable
+private fun PaymentConfirmDialog(
+    state: NewPaymentState,
+    onConfirm: () -> Unit,
+    onCancel: () -> Unit
+) {
+    val routing = AccountFormatter.routingPrefix(state.toAccountNumber)
+    val isInter = routing != null && routing != "222"
+    val fromCurrency = state.fromAccount?.currency
+    // Cross-currency intra-bank: toAccount nije ucitan (FE ne radi pre-lookup) — pretpostavka:
+    // ako primalac broji ne pocinje sa 222, to je inter-bank scenarij; inace cross-currency
+    // intra-bank se detektuje kasnije po BE response-u. Za ME-06 minimum: prikazujemo
+    // generic alert ako nije RSD.
+    AlertDialog(
+        onDismissRequest = onCancel,
+        title = { Text("Pregled placanja", fontWeight = FontWeight.SemiBold) },
+        text = {
+            Column {
+                ConfirmRow(label = "Sa racuna", value = state.fromAccount?.accountNumber ?: "—")
+                ConfirmRow(label = "Primalac", value = state.recipientName.ifBlank { "—" })
+                ConfirmRow(label = "Broj racuna primaoca", value = state.toAccountNumber.ifBlank { "—" })
+                ConfirmRow(
+                    label = "Iznos",
+                    value = state.parsedAmount?.let {
+                        MoneyFormatter.formatWithCurrency(it, fromCurrency)
+                    } ?: "—"
+                )
+                if (state.paymentPurpose.isNotBlank()) {
+                    ConfirmRow(label = "Svrha", value = state.paymentPurpose)
+                }
+                Spacer(Modifier.height(8.dp))
+                if (isInter) {
+                    Text(
+                        "Napomena: ovo je medjubankarsko placanje. Pokrece se 2-Phase Commit protokol — moze potrajati 1-2 min.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color(0xFF1E40AF)  // blue-700
+                    )
+                } else if (fromCurrency != null && !fromCurrency.equals("RSD", true)) {
+                    Text(
+                        "Napomena: ako primalac ima racun u drugoj valuti, banka ce primeniti prodajni kurs i naplatiti FX proviziju.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color(0xFFEAB308)  // amber-500
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            androidx.compose.material3.TextButton(onClick = onConfirm) {
+                Text("Potvrdi i nastavi")
+            }
+        },
+        dismissButton = {
+            androidx.compose.material3.TextButton(onClick = onCancel) { Text("Otkazi") }
+        }
+    )
+}
+
+@Composable
+private fun ConfirmRow(label: String, value: String) {
+    Row(modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp)) {
+        Text(
+            text = "$label:",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.width(160.dp)
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurface,
+            fontWeight = FontWeight.SemiBold
         )
     }
 }

@@ -15,6 +15,7 @@ import rs.raf.banka2.mobile.data.dto.fund.FundSummaryDto
 import rs.raf.banka2.mobile.data.dto.fund.FundTransactionDto
 import rs.raf.banka2.mobile.data.dto.fund.FundWithdrawDto
 import rs.raf.banka2.mobile.data.dto.fund.ReassignFundManagerDto
+import rs.raf.banka2.mobile.data.dto.fundstatistics.FundStatisticsDto
 
 interface FundApi {
 
@@ -59,4 +60,11 @@ interface FundApi {
         @Path("id") fundId: Long,
         @Body body: ReassignFundManagerDto
     ): Response<FundDetailDto>
+
+    /**
+     * B12 / Spec C4 §15: statisticke metrike performansi fonda
+     * (anualizovani prinos, volatilnost, max drawdown, reward-to-variability).
+     */
+    @GET("funds/{id}/statistics")
+    suspend fun statistics(@Path("id") fundId: Long): Response<FundStatisticsDto>
 }

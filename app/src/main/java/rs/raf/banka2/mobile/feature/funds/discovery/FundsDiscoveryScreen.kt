@@ -106,6 +106,7 @@ fun FundsDiscoveryScreen(
                     }
                 }
                 items(state.funds, key = { it.id }) { fund ->
+                    val stats = state.statisticsByFundId[fund.id]
                     GlassCard(modifier = Modifier
                         .fillMaxWidth()
                         .clickable { onFundClick(fund.id) }
@@ -135,10 +136,44 @@ fun FundsDiscoveryScreen(
                                 )
                             }
                         }
+                        // B12: 4 statisticka metrika prikazana kao mini grid ispod glavnog reda
+                        if (stats != null && stats.sufficientHistory) {
+                            Spacer(Modifier.height(8.dp))
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                StatMini("God. prinos", stats.annualizedReturnPercent?.let { "${if (it >= 0) "+" else ""}${"%.2f".format(it)}%" } ?: "—")
+                                StatMini("Sharpe", stats.rewardToVariabilityRatio?.let { "%.2f".format(it) } ?: "—")
+                                StatMini("Max DD", stats.maxDrawdownPercent?.let { "%.2f".format(it) + "%" } ?: "—")
+                                StatMini("Vol.", stats.volatilityPercent?.let { "%.2f".format(it) + "%" } ?: "—")
+                            }
+                        } else if (stats != null) {
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                "Nema dovoljno istorije za statistiku (${stats.snapshotCount} snimaka).",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun StatMini(label: String, value: String) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            value,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.primary,
+            fontWeight = FontWeight.SemiBold
+        )
+        Text(
+            label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 

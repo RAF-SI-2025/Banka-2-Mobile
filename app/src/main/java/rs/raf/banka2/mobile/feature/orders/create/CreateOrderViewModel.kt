@@ -59,11 +59,15 @@ class CreateOrderViewModel @Inject constructor(
     private fun observeRole() {
         viewModelScope.launch {
             sessionManager.state.collect { session ->
-                val role = (session as? SessionState.LoggedIn)?.profile?.role ?: UserRole.Unknown
+                val profile = (session as? SessionState.LoggedIn)?.profile
+                val role = profile?.role ?: UserRole.Unknown
+                // ME-04: za CLIENT-a sa canTradeStocks=false UI je gated.
+                val canTrade = profile?.canAccessTrading ?: true
                 _state.update {
                     it.copy(
                         isEmployee = role.isEmployee,
-                        canPickFund = role.isSupervisor
+                        canPickFund = role.isSupervisor,
+                        canTrade = canTrade
                     )
                 }
                 // Supervizor moze da kupuje "u ime fonda" — fetchujemo listu fondova
@@ -226,6 +230,7 @@ data class CreateOrderState(
     val onBehalfOfFundId: String = "",
     val isEmployee: Boolean = false,
     val canPickFund: Boolean = false,
+    val canTrade: Boolean = true,  // ME-04: CLIENT bez TRADE_STOCKS permisije ne moze kreirati order
     val showVerification: Boolean = false,
     val submitting: Boolean = false,
     val exchangeIsOpen: Boolean? = null,

@@ -17,13 +17,18 @@ interface ClientApi {
     @POST("clients")
     suspend fun create(@Body body: CreateClientRequestDto): Response<ClientDto>
 
+    /**
+     * ME-04: za login flow — `list` sa filter-om po email-u sluzi kao "searchByEmail".
+     * BE prima `email` query param i vraca matching clients (max 1 expected za point lookup).
+     */
     @GET("clients")
     suspend fun list(
         @Query("page") page: Int = 0,
         @Query("limit") limit: Int = 50,
         @Query("firstName") firstName: String? = null,
         @Query("lastName") lastName: String? = null,
-        @Query("email") email: String? = null
+        @Query("email") email: String? = null,
+        @Query("search") search: String? = null
     ): Response<PageResponse<ClientDto>>
 
     @GET("clients/{id}")

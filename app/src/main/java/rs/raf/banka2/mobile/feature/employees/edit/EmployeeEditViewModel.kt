@@ -67,7 +67,9 @@ class EmployeeEditViewModel @Inject constructor(
     fun update(name: String, lastName: String, phone: String, address: String, position: String, department: String,
                isAgent: Boolean, isSupervisor: Boolean, active: Boolean) {
         val employee = _state.value.employee ?: return
-        val originalSupervisor = employee.isSupervisor ?: false
+        // ME-12 fix: BE moze poslati isSupervisor flag ili samo permissions list-u —
+        // derivedIsSupervisor handluje oba (legacy + nov format).
+        val originalSupervisor = employee.derivedIsSupervisor
         val isRemovingSupervisor = originalSupervisor && !isSupervisor
 
         if (isRemovingSupervisor) {
@@ -122,43 +124,48 @@ class EmployeeEditViewModel @Inject constructor(
         }
     }
 
+    /**
+     * ME-10 fix: atomic update — sva polja (ukljucujuci `permissions` i `active`)
+     * idu u jedan `PUT /employees/{id}` poziv. Nema vise 2 sekventna PUT-a koji
+     * mogu da prekinu na pola (prvi prosao, drugi fail-uje → inconsistent state).
+     *
+     * ME-13 fix: nema vise PATCH /employees/{id}/permissions — BE prima
+     * `permissions: List<String>` direktno u UpdateEmployeeRequestDto.
+     */
     private suspend fun runUpdate(
         name: String, lastName: String, phone: String, address: String,
         position: String, department: String, isAgent: Boolean, isSupervisor: Boolean, active: Boolean
     ) {
         _state.update { it.copy(submitting = true, error = null) }
-        val originalAgent = _state.value.employee?.isAgent ?: false
-        val originalSupervisor = _state.value.employee?.isSupervisor ?: false
+        val originalIsAdmin = _state.value.employee?.derivedIsAdmin ?: false
+        // Permisije: koristimo postojece `isAdmin` flag-a (ne menjamo ga iz Edit ekrana —
+        // admin status menja samo super-admin kroz poseban flow). Dropdown daje samo
+        // isAgent/isSupervisor; ADMIN bit ostaje kao sto je bio.
+        val permissions = buildList {
+            if (originalIsAdmin) add("ADMIN")
+            if (isSupervisor) add("SUPERVISOR")
+            if (isAgent) add("AGENT")
+        }
         val request = UpdateEmployeeRequestDto(
             firstName = name.takeIf { it.isNotBlank() },
             lastName = lastName.takeIf { it.isNotBlank() },
-            phoneNumber = phone.takeIf { it.isNotBlank() },
+            phone = phone.takeIf { it.isNotBlank() },
             address = address.takeIf { it.isNotBlank() },
             position = position.takeIf { it.isNotBlank() },
             department = department.takeIf { it.isNotBlank() },
-            active = active
+            active = active,
+            permissions = permissions
         )
         when (val result = repository.update(employeeId, request)) {
-            is ApiResult.Success -> _state.update { it.copy(employee = result.data) }
+            is ApiResult.Success -> {
+                _state.update { it.copy(submitting = false, employee = result.data) }
+                _events.send(EmployeeEditEvent.Toast("Zaposleni je azuriran."))
+            }
             is ApiResult.Failure -> {
                 _state.update { it.copy(submitting = false, error = result.error.message) }
-                return
             }
             ApiResult.Loading -> Unit
         }
-        if (isAgent != originalAgent || isSupervisor != originalSupervisor) {
-            when (val permResult = repository.updatePermissions(employeeId, isAgent, isSupervisor)) {
-                is ApiResult.Success -> _state.update { it.copy(submitting = false, employee = permResult.data) }
-                is ApiResult.Failure -> {
-                    _state.update { it.copy(submitting = false, error = permResult.error.message) }
-                    return
-                }
-                ApiResult.Loading -> Unit
-            }
-        } else {
-            _state.update { it.copy(submitting = false) }
-        }
-        _events.send(EmployeeEditEvent.Toast("Zaposleni je azuriran."))
     }
 
     fun deactivate() = viewModelScope.launch {

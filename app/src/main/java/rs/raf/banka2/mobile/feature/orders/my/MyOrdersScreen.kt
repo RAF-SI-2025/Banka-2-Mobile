@@ -1,6 +1,7 @@
 package rs.raf.banka2.mobile.feature.orders.my
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,7 +12,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.Refresh
@@ -30,6 +33,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -44,6 +48,7 @@ import rs.raf.banka2.mobile.core.ui.components.DangerButton
 import rs.raf.banka2.mobile.core.ui.components.EmptyState
 import rs.raf.banka2.mobile.core.ui.components.ErrorBanner
 import rs.raf.banka2.mobile.core.ui.components.GlassCard
+import rs.raf.banka2.mobile.core.ui.components.SecondaryButton
 import rs.raf.banka2.mobile.data.dto.order.OrderDto
 
 @Composable
@@ -83,6 +88,17 @@ fun MyOrdersScreen(
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
+            item {
+                FilterCard(
+                    state = state,
+                    onStatus = viewModel::setStatus,
+                    onListingType = viewModel::setListingType,
+                    onDateFrom = viewModel::setDateFrom,
+                    onDateTo = viewModel::setDateTo,
+                    onApply = viewModel::applyFilters,
+                    onReset = viewModel::resetFilters
+                )
+            }
             if (state.error != null) item { ErrorBanner(state.error) }
             if (state.orders.isEmpty() && !state.loading) {
                 item {
@@ -177,6 +193,95 @@ private fun OrderCard(order: OrderDto, onCancel: () -> Unit) {
             Spacer(Modifier.height(8.dp))
             DangerButton(text = "Otkazi", onClick = onCancel, modifier = Modifier.fillMaxWidth())
         }
+    }
+}
+
+/**
+ * C3 #7 / Spec C3 §7 — filteri istorije ordera.
+ *
+ * 4 filtera:
+ *  - Status (chip): Sve / Ceka / Aktivan / Zavrsen / Parcijalan / Odbijen / Otkazan
+ *  - Tip hartije (chip): Sve / Akcije / Futures / Forex / Opcije
+ *  - Datum od/do (YYYY-MM-DD)
+ * Plus "Resetuj" + "Primeni" dugmad.
+ */
+@Composable
+private fun FilterCard(
+    state: MyOrdersState,
+    onStatus: (String?) -> Unit,
+    onListingType: (String?) -> Unit,
+    onDateFrom: (String) -> Unit,
+    onDateTo: (String) -> Unit,
+    onApply: () -> Unit,
+    onReset: () -> Unit
+) {
+    GlassCard(modifier = Modifier.fillMaxWidth()) {
+        Text("Filteri", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
+        Spacer(Modifier.height(6.dp))
+        Text("Status", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            items(MY_ORDERS_STATUS_OPTIONS) { status ->
+                val isSelected = (status == "ALL" && state.filterStatus == null) || state.filterStatus == status
+                FilterChipBox(
+                    label = MY_ORDERS_STATUS_LABEL_SR[status] ?: status,
+                    isSelected = isSelected,
+                    onClick = { onStatus(if (status == "ALL") null else status) }
+                )
+            }
+        }
+        Spacer(Modifier.height(8.dp))
+        Text("Tip hartije", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            items(MY_ORDERS_LISTING_TYPE_OPTIONS) { listingType ->
+                val isSelected = (listingType == "ALL" && state.filterListingType == null) || state.filterListingType == listingType
+                FilterChipBox(
+                    label = MY_ORDERS_LISTING_TYPE_LABEL_SR[listingType] ?: listingType,
+                    isSelected = isSelected,
+                    onClick = { onListingType(if (listingType == "ALL") null else listingType) }
+                )
+            }
+        }
+        Spacer(Modifier.height(8.dp))
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            AppTextField(
+                value = state.filterDateFrom,
+                onValueChange = onDateFrom,
+                label = "Od (YYYY-MM-DD)",
+                modifier = Modifier.weight(1f)
+            )
+            AppTextField(
+                value = state.filterDateTo,
+                onValueChange = onDateTo,
+                label = "Do (YYYY-MM-DD)",
+                modifier = Modifier.weight(1f)
+            )
+        }
+        Spacer(Modifier.height(8.dp))
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            SecondaryButton(text = "Resetuj", onClick = onReset, modifier = Modifier.weight(1f), height = 42.dp)
+            SecondaryButton(text = "Primeni", onClick = onApply, modifier = Modifier.weight(1f), height = 42.dp)
+        }
+    }
+}
+
+@Composable
+private fun FilterChipBox(label: String, isSelected: Boolean, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(10.dp))
+            .background(
+                if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.22f)
+                else MaterialTheme.colorScheme.surfaceContainerHigh
+            )
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 6.dp)
+    ) {
+        Text(
+            label,
+            style = MaterialTheme.typography.labelMedium,
+            color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
+        )
     }
 }
 
