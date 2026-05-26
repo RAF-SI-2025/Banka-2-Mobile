@@ -6,12 +6,16 @@ name: mobile-cd
 # Build varijante:
 #   - assembleDebug   -> app-debug.apk     (BASE_URL = http://10.0.2.2:8080/, ENABLE_HTTP_LOGGING=true)
 #                         za lokalni dev preko Android emulator-a sa Docker compose backend-om
-#   - assembleRelease -> app-release.apk   (BASE_URL = https://banka-2.radenkovic.rs/api/, R8 + shrink)
+#   - assembleRelease -> app-release.apk   (BASE_URL = https://banka-2.radenkovic.rs/api/, bez R8 minify-a)
 #                         za fizicki telefon koji udara na K8s production deploy
 #
 # Oba APK-a potpisana su sa Android SDK debug.keystore — auto-generise se prilikom prvog
 # build-a (~/.android/debug.keystore na GH Actions runner-u). Za pravi production keystore
 # (Play Store etc.) treba dodatni setup sa secrets.
+#
+# Napomena: R8 minify + shrink ISKLJUCENI u app/build.gradle.kts release block-u.
+# Sa minify-em release APK je crashovao pri login-u (Moshi DTO obfuscation). Bez minify-a
+# APK je ~16 MB (umesto 3 MB), ali pouzdan. Vidi build.gradle.kts za detalje.
 
 on:
   push:
@@ -35,7 +39,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0   # full history potreban za auto-generated release notes (git log od prethodnog tag-a)
 
@@ -51,13 +55,13 @@ jobs:
       # AGP 9.2 + Kotlin 2.3.21 + Gradle 9.4 + jvmTarget 21 — JDK 21 je minimum za build.
       # Match-uje mobile-ci.yml verziju.
       - name: Set up JDK 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           java-version: '21'
           distribution: temurin
 
       - name: Cache Gradle
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ~/.gradle/caches
@@ -111,7 +115,7 @@ jobs:
           ls -lh artifacts/
 
       - name: Upload APKs kao workflow artifacts (backup ako Release fail-uje)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: banka2-mobile-${{ steps.tag.outputs.name }}-apks
           path: artifacts/*.apk
@@ -119,7 +123,7 @@ jobs:
           retention-days: 90
 
       - name: Create GitHub Release sa APK-ovima
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ steps.tag.outputs.name }}
           name: 'Banka 2 Mobile ${{ steps.tag.outputs.name }}'
@@ -153,7 +157,7 @@ jobs:
 
             ### APK varijante
 
-            - **`banka2-mobile-*-release.apk`** — production build (R8 minify + resource shrink), manji, optimized — **za telefon**.
+            - **`banka2-mobile-*-release.apk`** — production build za K8s backend (`https://banka-2.radenkovic.rs/api/`) — **za telefon**.
             - **`banka2-mobile-*-debug.apk`** — dev build sa http logging-om + emulator BASE_URL `http://10.0.2.2:8080/` — samo za Android emulator + lokalni Docker stack.
 
             ### Sta NE radi (out of scope)

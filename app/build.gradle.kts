@@ -35,12 +35,16 @@ android {
             // API_BASE_URL = "http://10.0.2.2:8080/" nasledjuje iz defaultConfig.
         }
         release {
-            isMinifyEnabled = true
-            isShrinkResources = true
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
-            )
+            // R8 minify + shrink ISKLJUCENO — sa minify-em release APK je crashovao
+            // pri login-u (najverovatnije Moshi codegen adapter look-up sa obfuscated
+            // DTO klasama, ili Hilt @HiltViewModel reflection). Bez minify-a APK je
+            // oko 25 MB umesto 3.4 MB, ali za fakultetski projekt + GitHub Release
+            // distribuciju velicina nije bitna; pouzdanost je. Ako se ikad bude
+            // vracalo na minify, treba dodati kompletne Moshi + Hilt + Retrofit +
+            // Kotlin metadata pravila u proguard-rules.pro i lokalno testirati
+            // assembleRelease + adb install + smoke test pre push-a.
+            isMinifyEnabled = false
+            isShrinkResources = false
             buildConfigField("Boolean", "ENABLE_HTTP_LOGGING", "false")
             // Production K8s deploy — fakultetski klaster sa Envoy Gateway HTTPRoute.
             buildConfigField(
