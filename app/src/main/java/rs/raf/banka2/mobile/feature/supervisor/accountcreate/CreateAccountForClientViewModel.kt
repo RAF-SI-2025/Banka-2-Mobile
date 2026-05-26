@@ -14,6 +14,7 @@ import rs.raf.banka2.mobile.core.format.MoneyFormatter
 import rs.raf.banka2.mobile.core.network.ApiResult
 import rs.raf.banka2.mobile.data.dto.account.CreateAccountDto
 import rs.raf.banka2.mobile.data.repository.AccountRepository
+import java.math.BigDecimal
 import javax.inject.Inject
 
 @HiltViewModel
@@ -40,7 +41,7 @@ class CreateAccountForClientViewModel @Inject constructor(
             _state.update { it.copy(error = "Email vlasnika, tip i valuta su obavezni.") }
             return
         }
-        val deposit = MoneyFormatter.parse(current.initialDeposit) ?: 0.0
+        val deposit = MoneyFormatter.parseBigDecimal(current.initialDeposit) ?: BigDecimal.ZERO
         viewModelScope.launch {
             _state.update { it.copy(submitting = true) }
             val request = CreateAccountDto(

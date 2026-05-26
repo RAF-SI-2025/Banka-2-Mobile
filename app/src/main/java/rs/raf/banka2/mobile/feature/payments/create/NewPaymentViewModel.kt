@@ -23,6 +23,7 @@ import rs.raf.banka2.mobile.data.repository.AccountRepository
 import rs.raf.banka2.mobile.data.repository.InterbankRepository
 import rs.raf.banka2.mobile.data.repository.PaymentRepository
 import rs.raf.banka2.mobile.data.repository.RecipientRepository
+import java.math.BigDecimal
 import javax.inject.Inject
 
 /** Routing prefix nase banke (Banka 2). Sve sto je drugacije ide na inter-bank flow. */
@@ -112,12 +113,13 @@ class NewPaymentViewModel @Inject constructor(
      */
     fun openConfirmDialog() {
         val current = _state.value
-        val parsedAmount = MoneyFormatter.parse(current.amount)
+        // ME-11: parseBigDecimal — precision iznosi za payments (spec C2 §255).
+        val parsedAmount = MoneyFormatter.parseBigDecimal(current.amount)
         when {
             current.fromAccount == null -> _state.update { it.copy(error = "Odaberi racun pošiljaoca.") }
             current.recipientName.isBlank() -> _state.update { it.copy(error = "Ime primaoca je obavezno.") }
             current.toAccountNumber.isBlank() -> _state.update { it.copy(error = "Broj racuna primaoca je obavezan.") }
-            parsedAmount == null || parsedAmount <= 0.0 -> _state.update { it.copy(error = "Iznos mora biti veci od 0.") }
+            parsedAmount == null || parsedAmount <= BigDecimal.ZERO -> _state.update { it.copy(error = "Iznos mora biti veci od 0.") }
             current.paymentPurpose.isBlank() -> _state.update { it.copy(error = "Svrha placanja je obavezna.") }
             else -> _state.update {
                 val routing = AccountFormatter.routingPrefix(current.toAccountNumber)
@@ -164,7 +166,7 @@ class NewPaymentViewModel @Inject constructor(
         viewModelScope.launch { paymentRecoveryStore.clearActive2PC() }
     }
 
-    private fun startIntraBankFlow(account: AccountDto, parsedAmount: Double, code: String) {
+    private fun startIntraBankFlow(account: AccountDto, parsedAmount: BigDecimal, code: String) {
         val current = _state.value
         viewModelScope.launch {
             _state.update { it.copy(verifying = true) }
@@ -194,7 +196,7 @@ class NewPaymentViewModel @Inject constructor(
         }
     }
 
-    private fun startInterbankFlow(account: AccountDto, parsedAmount: Double, code: String) {
+    private fun startInterbankFlow(account: AccountDto, parsedAmount: BigDecimal, code: String) {
         val current = _state.value
         viewModelScope.launch {
             _state.update {
@@ -334,7 +336,7 @@ data class NewPaymentState(
     val recipientName: String = "",
     val toAccountNumber: String = "",
     val amount: String = "",
-    val parsedAmount: Double? = null,
+    val parsedAmount: BigDecimal? = null,
     val paymentPurpose: String = "",
     val paymentCode: String = "289",
     val referenceNumber: String = "",
@@ -350,9 +352,9 @@ data class InterbankProgress(
     val transactionId: String?,
     val status: String,
     val message: String? = null,
-    val rate: Double? = null,
-    val fee: Double? = null,
-    val convertedAmount: Double? = null,
+    val rate: Double? = null,                // FX kurs (Double je OK)
+    val fee: BigDecimal? = null,             // ME-11
+    val convertedAmount: BigDecimal? = null, // ME-11
     val convertedCurrency: String? = null
 )
 

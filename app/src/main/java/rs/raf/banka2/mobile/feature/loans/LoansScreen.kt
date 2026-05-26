@@ -108,7 +108,7 @@ fun LoansScreen(
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                                 Text(
-                                    MoneyFormatter.format(loan.balance ?: 0.0),
+                                    MoneyFormatter.format(loan.balance ?: java.math.BigDecimal.ZERO),
                                     style = MaterialTheme.typography.titleSmall,
                                     fontWeight = FontWeight.SemiBold,
                                     color = MaterialTheme.colorScheme.onSurface
@@ -136,7 +136,7 @@ fun LoansScreen(
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            "Iznos: ${MoneyFormatter.format(app.amount ?: 0.0)} · ${app.durationMonths ?: "?"} meseci",
+                            "Iznos: ${MoneyFormatter.format(app.amount ?: java.math.BigDecimal.ZERO)} · ${app.durationMonths ?: "?"} meseci",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )

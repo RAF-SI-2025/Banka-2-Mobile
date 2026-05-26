@@ -30,8 +30,8 @@ class AccountRepository @Inject constructor(
 
     suspend fun updateLimits(
         id: Long,
-        dailyLimit: Double?,
-        monthlyLimit: Double?,
+        dailyLimit: java.math.BigDecimal?,
+        monthlyLimit: java.math.BigDecimal?,
         otpCode: String?
     ): ApiResult<AccountDto> =
         safeApiCall { api.updateAccountLimits(id, AccountLimitsUpdateDto(dailyLimit, monthlyLimit, otpCode)) }

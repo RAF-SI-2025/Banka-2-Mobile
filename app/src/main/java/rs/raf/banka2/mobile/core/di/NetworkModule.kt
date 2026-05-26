@@ -12,6 +12,7 @@ import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
 import rs.raf.banka2.mobile.BuildConfig
 import rs.raf.banka2.mobile.core.network.AuthInterceptor
+import rs.raf.banka2.mobile.core.network.BigDecimalAdapter
 import rs.raf.banka2.mobile.core.network.TokenAuthenticator
 import rs.raf.banka2.mobile.data.api.AccountApi
 import rs.raf.banka2.mobile.data.api.ActuaryApi
@@ -53,6 +54,11 @@ object NetworkModule {
     @Provides
     @Singleton
     fun provideMoshi(): Moshi = Moshi.Builder()
+        // ME-11: BigDecimalAdapter mora biti pre KotlinJsonAdapterFactory jer
+        // Moshi nema nativni adapter za java.math.BigDecimal — bez ovoga,
+        // CardDto/SavingsDto/AccountDto/PaymentDto/TransferDto/LoanDto
+        // failovali bi pri deserializaciji sa BE-a (spec C2 §255).
+        .add(BigDecimalAdapter())
         .add(KotlinJsonAdapterFactory())
         .build()
 

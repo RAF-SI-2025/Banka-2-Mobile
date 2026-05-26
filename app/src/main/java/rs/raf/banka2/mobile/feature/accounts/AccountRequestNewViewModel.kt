@@ -14,6 +14,7 @@ import rs.raf.banka2.mobile.core.format.MoneyFormatter
 import rs.raf.banka2.mobile.core.network.ApiResult
 import rs.raf.banka2.mobile.data.dto.account.AccountRequestDto
 import rs.raf.banka2.mobile.data.repository.AccountRepository
+import java.math.BigDecimal
 import javax.inject.Inject
 
 @HiltViewModel
@@ -40,7 +41,7 @@ class AccountRequestNewViewModel @Inject constructor(
             _state.update { it.copy(error = "Tip racuna je obavezan.") }
             return
         }
-        val deposit = MoneyFormatter.parse(current.initialDeposit) ?: 0.0
+        val deposit = MoneyFormatter.parseBigDecimal(current.initialDeposit) ?: BigDecimal.ZERO
         val request = AccountRequestDto(
             accountType = current.accountType,
             accountSubtype = current.accountSubtype.takeIf { it.isNotBlank() },

@@ -18,6 +18,7 @@ import rs.raf.banka2.mobile.data.dto.transfer.TransferInternalRequestDto
 import rs.raf.banka2.mobile.data.repository.AccountRepository
 import rs.raf.banka2.mobile.data.repository.ExchangeRepository
 import rs.raf.banka2.mobile.data.repository.TransferRepository
+import java.math.BigDecimal
 import javax.inject.Inject
 
 @HiltViewModel
@@ -67,14 +68,15 @@ class NewTransferViewModel @Inject constructor(
 
     fun openVerification() {
         val current = _state.value
-        val parsed = MoneyFormatter.parse(current.amount)
+        // ME-11: parseBigDecimal — precision iznos transfera (spec C2 §255).
+        val parsed = MoneyFormatter.parseBigDecimal(current.amount)
         when {
             current.fromAccount == null -> _state.update { it.copy(error = "Odaberi izvorni racun.") }
             current.toAccount == null -> _state.update { it.copy(error = "Odaberi ciljni racun.") }
             current.fromAccount?.id == current.toAccount?.id -> _state.update {
                 it.copy(error = "Izvor i cilj moraju biti razliciti racuni.")
             }
-            parsed == null || parsed <= 0.0 -> _state.update { it.copy(error = "Unesi validan iznos.") }
+            parsed == null || parsed <= BigDecimal.ZERO -> _state.update { it.copy(error = "Unesi validan iznos.") }
             else -> _state.update { it.copy(parsedAmount = parsed, error = null, showVerification = true) }
         }
     }
@@ -133,7 +135,7 @@ class NewTransferViewModel @Inject constructor(
             _state.update { it.copy(estimatedConverted = null, exchangeRate = null) }
             return
         }
-        val parsed = MoneyFormatter.parse(current.amount) ?: return
+        val parsed = MoneyFormatter.parse(current.amount) ?: return // exchange API koristi Double (UI estimate)
         viewModelScope.launch {
             when (val result = exchangeRepository.calculate(parsed, from.currency, to.currency.orEmpty())) {
                 is ApiResult.Success -> _state.update {
@@ -166,7 +168,7 @@ data class NewTransferState(
     val fromAccount: AccountDto? = null,
     val toAccount: AccountDto? = null,
     val amount: String = "",
-    val parsedAmount: Double? = null,
+    val parsedAmount: BigDecimal? = null,
     val description: String = "",
     val estimatedConverted: Double? = null,
     val exchangeRate: Double? = null,

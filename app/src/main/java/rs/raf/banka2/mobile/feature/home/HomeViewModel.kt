@@ -28,6 +28,7 @@ import rs.raf.banka2.mobile.data.repository.OrderRepository
 import rs.raf.banka2.mobile.data.repository.PaymentRepository
 import rs.raf.banka2.mobile.data.repository.PortfolioRepository
 import rs.raf.banka2.mobile.data.repository.RecipientRepository
+import java.math.BigDecimal
 import javax.inject.Inject
 
 @HiltViewModel
@@ -161,8 +162,9 @@ data class HomeState(
     val loadingAccounts: Boolean = false,
     val accountsError: String? = null
 ) {
-    val totalRsdBalance: Double
-        get() = accounts.filter { it.currency.equals("RSD", true) }.sumOf { it.balance }
+    val totalRsdBalance: BigDecimal
+        get() = accounts.filter { it.currency.equals("RSD", true) }
+            .fold(BigDecimal.ZERO) { acc, a -> acc + a.balance }
 
     val foreignAccountsCount: Int
         get() = accounts.count { !it.currency.equals("RSD", true) }
@@ -170,16 +172,19 @@ data class HomeState(
     /**
      * Kumulativni trend salda — uzimamo poslednjih 7 placanja u obrnutom redu
      * i racunamo tekuci saldo kao da svako placanje ide unatrag.
+     *
+     * ME-11: rezultat je `BigDecimal` jer su Account.balance i Payment.amount
+     * sada BigDecimal. Sparkline crtanje koristi `.toDouble()` na point-u.
      */
-    val balanceTrend: List<Double>
+    val balanceTrend: List<BigDecimal>
         get() {
             val sorted = recentPayments.takeLast(7)
             if (sorted.isEmpty()) return emptyList()
             var running = totalRsdBalance
-            val points = mutableListOf<Double>()
+            val points = mutableListOf<BigDecimal>()
             sorted.reversed().forEach { p ->
                 points += running
-                running += if (p.direction.equals("INCOMING", true)) -p.amount else p.amount
+                running = if (p.direction.equals("INCOMING", true)) running - p.amount else running + p.amount
             }
             return points.reversed()
         }

@@ -172,8 +172,9 @@ private fun AccountCard(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 // ME-05 fix: prikazi rezervisana sredstva amber bojom (paritet sa FE 14.05.2026 vece-3).
-                val reserved = (account.reservedAmount ?: (account.balance - account.availableBalance))
-                if (reserved > 0.0) {
+                // ME-11: koristi effectiveReserved helper koji vraca BigDecimal.
+                val reserved = account.effectiveReserved
+                if (reserved > java.math.BigDecimal.ZERO) {
                     Spacer(Modifier.height(4.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(

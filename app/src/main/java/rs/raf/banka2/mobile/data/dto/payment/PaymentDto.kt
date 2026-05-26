@@ -1,13 +1,19 @@
 package rs.raf.banka2.mobile.data.dto.payment
 
 import com.squareup.moshi.JsonClass
+import java.math.BigDecimal
 
+/**
+ * ME-11: novcana polja prebacena sa Double na BigDecimal (spec C2 §255).
+ * Moshi KotlinJsonAdapterFactory podrzava BigDecimal nativno (vec se koristi
+ * u CardDto.kt i SavingsDto.kt).
+ */
 @JsonClass(generateAdapter = true)
 data class CreatePaymentRequestDto(
     val fromAccountId: Long? = null,
     val fromAccountNumber: String? = null,
     val toAccountNumber: String,
-    val amount: Double,
+    val amount: BigDecimal,
     val currency: String? = null,
     val recipientName: String,
     val paymentCode: String = "289",
@@ -22,7 +28,7 @@ data class PaymentResponseDto(
     val id: Long,
     val fromAccount: String? = null,
     val toAccount: String? = null,
-    val amount: Double = 0.0,
+    val amount: BigDecimal = BigDecimal.ZERO,
     val currency: String? = null,
     val status: String? = null,
     val description: String? = null,
@@ -30,7 +36,7 @@ data class PaymentResponseDto(
     val paymentCode: String? = null,
     val referenceNumber: String? = null,
     val direction: String? = null,
-    val fee: Double? = null,
+    val fee: BigDecimal? = null,
     val createdAt: String? = null
 )
 

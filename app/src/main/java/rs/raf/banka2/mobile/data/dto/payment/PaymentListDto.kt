@@ -1,10 +1,13 @@
 package rs.raf.banka2.mobile.data.dto.payment
 
 import com.squareup.moshi.JsonClass
+import java.math.BigDecimal
 
 /**
- * Lakši zapis za listu plaćanja — backend vraća redukovani projekat
- * polja kako ne bi opterećivao mobile listu.
+ * Lakši zapis za listu placanja — backend vraca redukovani projekat
+ * polja kako ne bi opterecivao mobile listu.
+ *
+ * ME-11: `amount` je BigDecimal (spec C2 §255).
  */
 @JsonClass(generateAdapter = true)
 data class PaymentListItemDto(
@@ -12,7 +15,7 @@ data class PaymentListItemDto(
     val orderNumber: String? = null,
     val fromAccount: String? = null,
     val toAccount: String? = null,
-    val amount: Double = 0.0,
+    val amount: BigDecimal = BigDecimal.ZERO,
     val currency: String? = null,
     val status: String? = null,
     val direction: String? = null,

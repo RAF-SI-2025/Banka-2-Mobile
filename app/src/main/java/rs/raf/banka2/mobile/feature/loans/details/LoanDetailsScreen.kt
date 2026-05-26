@@ -115,7 +115,7 @@ private fun LoanHeader(loan: LoanDto) {
         Text(loan.status ?: "—", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
         Spacer(Modifier.height(8.dp))
         Text(MoneyFormatter.format(loan.amount, 2), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-        Text("Saldo: ${MoneyFormatter.format(loan.balance ?: 0.0, 2)}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text("Saldo: ${MoneyFormatter.format(loan.balance ?: java.math.BigDecimal.ZERO, 2)}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
@@ -127,7 +127,7 @@ private fun LoanInfoCard(loan: LoanDto) {
         loan.rateType?.let { InfoRow("Tip kamate", it) }
         InfoRow("Valuta", loan.currency ?: "—")
         InfoRow("Racun za otplatu", AccountFormatter.formatAccountNumber(loan.accountNumber))
-        InfoRow("Rata", MoneyFormatter.format(loan.monthlyInstallment ?: 0.0, 2))
+        InfoRow("Rata", MoneyFormatter.format(loan.monthlyInstallment ?: java.math.BigDecimal.ZERO, 2))
         InfoRow("Sledeca rata", DateFormatter.formatDate(loan.nextInstallmentDate))
         loan.maturityDate?.let { InfoRow("Dospece kredita", DateFormatter.formatDate(it)) }
         loan.interestRate?.let { InfoRow("Nominalna kamata", "${MoneyFormatter.format(it, 2)} %") }

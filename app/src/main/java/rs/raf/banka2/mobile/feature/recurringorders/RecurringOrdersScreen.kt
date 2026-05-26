@@ -52,6 +52,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import rs.raf.banka2.mobile.core.format.AccountFormatter
 import rs.raf.banka2.mobile.core.format.DateFormatter
+import rs.raf.banka2.mobile.core.format.MoneyFormatter
 import rs.raf.banka2.mobile.core.ui.components.AnimatedBackground
 import rs.raf.banka2.mobile.core.ui.components.BankaScaffold
 import rs.raf.banka2.mobile.core.ui.components.EmptyState
@@ -407,7 +408,7 @@ private fun AccountDropdown(
                                 style = MaterialTheme.typography.bodyMedium,
                             )
                             Text(
-                                "${acc.currency ?: ""} · ${acc.availableBalance}",
+                                "${acc.currency ?: ""} · ${MoneyFormatter.format(acc.availableBalance)}",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )

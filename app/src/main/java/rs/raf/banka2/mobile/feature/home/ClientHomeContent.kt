@@ -63,6 +63,7 @@ import rs.raf.banka2.mobile.data.dto.account.AccountDto
 import rs.raf.banka2.mobile.data.dto.exchange.ExchangeRateDto
 import rs.raf.banka2.mobile.data.dto.payment.PaymentListItemDto
 import rs.raf.banka2.mobile.data.dto.recipient.RecipientDto
+import java.math.BigDecimal
 
 private val gradients: Map<String, List<Color>> = mapOf(
     "RSD" to listOf(Color(0xFF3B82F6), Color(0xFF1D4ED8)),
@@ -99,7 +100,8 @@ fun ClientHomeContent(
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Spacer(Modifier.height(8.dp))
-                    MiniBarChart(values = state.balanceTrend, height = 96.dp)
+                    // ME-11: MiniBarChart prima Double (UI-only); mapiranje iz BigDecimal radimo ovde.
+                    MiniBarChart(values = state.balanceTrend.map { it.toDouble() }, height = 96.dp)
                 }
             }
         }
@@ -164,7 +166,7 @@ fun ClientHomeContent(
 @Composable
 private fun ClientHero(
     profile: UserProfile?,
-    totalRsd: Double,
+    totalRsd: BigDecimal,
     foreignCount: Int,
     visible: Boolean,
     onToggle: () -> Unit,

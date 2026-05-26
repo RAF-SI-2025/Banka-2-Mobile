@@ -135,8 +135,9 @@ fun AccountDetailsScreen(
                             }
                         }
                         // ME-05 fix: rezervisana sredstva amber boja (paritet sa FE 14.05.2026 vece-3).
-                        val reserved = (acc.reservedAmount ?: (acc.balance - acc.availableBalance))
-                        if (reserved > 0.0) {
+                        // ME-11: koristi effectiveReserved helper koji vraca BigDecimal.
+                        val reserved = acc.effectiveReserved
+                        if (reserved > java.math.BigDecimal.ZERO) {
                             Spacer(Modifier.height(8.dp))
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(
@@ -281,16 +282,16 @@ private fun LimitDialog(
     currency: String?,
     isLoading: Boolean,
     error: String?,
-    initialDaily: Double?,
-    initialMonthly: Double?,
+    initialDaily: java.math.BigDecimal?,
+    initialMonthly: java.math.BigDecimal?,
     onDismiss: () -> Unit,
-    onSubmit: (daily: Double?, monthly: Double?, otpCode: String?) -> Unit
+    onSubmit: (daily: java.math.BigDecimal?, monthly: java.math.BigDecimal?, otpCode: String?) -> Unit
 ) {
     var daily by remember { mutableStateOf(initialDaily?.let { MoneyFormatter.format(it) }.orEmpty()) }
     var monthly by remember { mutableStateOf(initialMonthly?.let { MoneyFormatter.format(it) }.orEmpty()) }
     var showOtp by remember { mutableStateOf(false) }
-    val parsedDaily = MoneyFormatter.parse(daily)
-    val parsedMonthly = MoneyFormatter.parse(monthly)
+    val parsedDaily = MoneyFormatter.parseBigDecimal(daily)
+    val parsedMonthly = MoneyFormatter.parseBigDecimal(monthly)
     val canSubmit = (parsedDaily != null || parsedMonthly != null) && !isLoading
 
     AlertDialog(

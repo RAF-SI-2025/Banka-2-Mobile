@@ -61,7 +61,7 @@ fun AllLoansScreen(
                         }
                         Column(horizontalAlignment = Alignment.End) {
                             Text(MoneyFormatter.format(loan.amount, 2), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
-                            Text("Saldo: ${MoneyFormatter.format(loan.balance ?: 0.0, 2)}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("Saldo: ${MoneyFormatter.format(loan.balance ?: java.math.BigDecimal.ZERO, 2)}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             Text(loan.status ?: "—", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
                         }
                     }

@@ -70,7 +70,7 @@ fun LoanRequestsScreen(
                         Column(modifier = Modifier.weight(1f)) {
                             Text(req.clientEmail ?: "Klijent", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
                             Text(
-                                "Iznos: ${MoneyFormatter.format(req.amount ?: 0.0, 2)} · ${req.durationMonths ?: "?"} meseci",
+                                "Iznos: ${MoneyFormatter.format(req.amount ?: java.math.BigDecimal.ZERO, 2)} · ${req.durationMonths ?: "?"} meseci",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )

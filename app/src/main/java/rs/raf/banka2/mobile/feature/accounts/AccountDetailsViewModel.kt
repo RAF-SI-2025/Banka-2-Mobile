@@ -59,7 +59,7 @@ class AccountDetailsViewModel @Inject constructor(
         }
     }
 
-    fun submitLimitChange(daily: Double?, monthly: Double?, otpCode: String?) {
+    fun submitLimitChange(daily: java.math.BigDecimal?, monthly: java.math.BigDecimal?, otpCode: String?) {
         viewModelScope.launch {
             _state.update { it.copy(isSavingLimit = true, limitError = null) }
             when (val result = accountRepository.updateLimits(accountId, daily, monthly, otpCode)) {

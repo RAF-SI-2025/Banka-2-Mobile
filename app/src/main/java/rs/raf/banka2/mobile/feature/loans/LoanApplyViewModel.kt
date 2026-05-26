@@ -16,6 +16,7 @@ import rs.raf.banka2.mobile.data.dto.account.AccountDto
 import rs.raf.banka2.mobile.data.dto.loan.LoanApplicationDto
 import rs.raf.banka2.mobile.data.repository.AccountRepository
 import rs.raf.banka2.mobile.data.repository.LoanRepository
+import java.math.BigDecimal
 import javax.inject.Inject
 
 @HiltViewModel
@@ -46,9 +47,10 @@ class LoanApplyViewModel @Inject constructor(
      */
     fun submit() {
         val current = _state.value
-        val amount = MoneyFormatter.parse(current.amount)
+        // ME-11: parseBigDecimal — precision iznos kredita (spec C2 §255).
+        val amount = MoneyFormatter.parseBigDecimal(current.amount)
         val duration = current.durationMonths.toIntOrNull()
-        if (amount == null || amount <= 0.0) {
+        if (amount == null || amount <= BigDecimal.ZERO) {
             _state.update { it.copy(error = "Iznos je obavezan.") }; return
         }
         if (duration == null || duration <= 0) {
@@ -86,7 +88,7 @@ class LoanApplyViewModel @Inject constructor(
                 accountId = current.account?.id,
                 accountNumber = current.account?.accountNumber,
                 currency = current.account?.currency,
-                monthlyIncome = MoneyFormatter.parse(current.monthlyIncome),
+                monthlyIncome = MoneyFormatter.parseBigDecimal(current.monthlyIncome),
                 employer = current.employer.takeIf { it.isNotBlank() },
                 otpCode = code
             )
@@ -124,7 +126,7 @@ data class LoanApplyState(
     val employer: String = "",
     val submitting: Boolean = false,
     // ME-09: cuvane vrednosti posle validacije, koriste se u submitWithOtp.
-    val parsedAmount: Double? = null,
+    val parsedAmount: BigDecimal? = null,
     val parsedDuration: Int? = null,
     val showVerification: Boolean = false,
     val error: String? = null
