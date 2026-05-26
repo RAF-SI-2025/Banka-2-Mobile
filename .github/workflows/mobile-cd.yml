@@ -115,7 +115,7 @@ jobs:
           ls -lh artifacts/
 
       - name: Upload APKs kao workflow artifacts (backup ako Release fail-uje)
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: banka2-mobile-${{ steps.tag.outputs.name }}-apks
           path: artifacts/*.apk

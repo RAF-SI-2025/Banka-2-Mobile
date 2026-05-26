@@ -93,7 +93,13 @@ android {
             "IconDipSize",
             "IconDuplicates",
             "IconLocation",
-            "MonochromeLauncherIcon"
+            "MonochromeLauncherIcon",
+            // NotShrinkingResources: AGP lint izbacuje warning jer je
+            // isShrinkResources = false u release block-u. To je intencionalno
+            // (vidi komentar u buildTypes.release iznad) — APK velicina nije
+            // bitna, pouzdanost (no R8 obfuscation crash) jeste. Suppress-ujemo
+            // ovaj warning jer warningsAsErrors=true ga inace pretvara u CI fail.
+            "NotShrinkingResources"
         )
         warningsAsErrors = true
         abortOnError = true
