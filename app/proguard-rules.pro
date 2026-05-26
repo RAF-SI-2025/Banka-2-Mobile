@@ -32,3 +32,14 @@
     public static *** v(...);
     public static *** d(...);
 }
+
+# androidx.security.crypto + Google Tink — Tink koristi @CanIgnoreReturnValue,
+# @CheckReturnValue, @Immutable, @RestrictedApi iz com.google.errorprone.annotations,
+# ali to su compile-only annotations koje nisu na Android runtime classpath-u.
+# Bez -dontwarn, R8 release build pada sa "Missing class com.google.errorprone.*".
+# Tink klase same sacuvane jer EncryptedSharedPreferences koristi refleksiju na registry.
+-dontwarn com.google.errorprone.annotations.**
+-dontwarn javax.annotation.**
+-dontwarn org.checkerframework.**
+-keep class com.google.crypto.tink.** { *; }
+-dontwarn com.google.crypto.tink.**

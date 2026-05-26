@@ -273,7 +273,7 @@ private fun NewOrderForm(
             },
         )
 
-        // Mode: BYAMOUNT / BYQUANTITY toggle
+        // Mode: BY_AMOUNT / BY_QUANTITY toggle
         SegmentedToggle(
             options = RecurringMode.entries.map { it.apiValue to it.labelSr },
             selected = form.mode.apiValue,
@@ -287,7 +287,7 @@ private fun NewOrderForm(
             value = form.valueText,
             onValueChange = viewModel::setValueText,
             label = {
-                Text(if (form.mode == RecurringMode.BYAMOUNT) "Iznos (po valuti racuna)" else "Broj akcija")
+                Text(if (form.mode == RecurringMode.BY_AMOUNT) "Iznos (po valuti racuna)" else "Broj akcija")
             },
             singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),

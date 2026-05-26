@@ -18,9 +18,9 @@ import java.math.BigDecimal
  *
  * Polja:
  *   - direction: "BUY" ili "SELL" (BE pattern regex)
- *   - mode:      "BYAMOUNT" (po novcanom iznosu) | "BYQUANTITY" (po broju akcija)
+ *   - mode:      "BY_AMOUNT" (po novcanom iznosu) | "BY_QUANTITY" (po broju akcija)
  *   - cadence:   "DAILY" | "WEEKLY" | "MONTHLY"
- *   - value:     ako mode=BYAMOUNT iznos u valuti racuna; ako BYQUANTITY broj akcija
+ *   - value:     ako mode=BY_AMOUNT iznos u valuti racuna; ako BY_QUANTITY broj akcija
  *   - active:    true = ACTIVE (sledeci run zakazan), false = PAUSED
  *   - nextRun:   ISO LocalDateTime (sledeci put kad ce scheduler okidnuti)
  *
@@ -34,7 +34,7 @@ data class RecurringOrderDto(
     val listingId: Long,
     val listingTicker: String? = null,
     val direction: String,   // "BUY" | "SELL"
-    val mode: String,        // "BYAMOUNT" | "BYQUANTITY"
+    val mode: String,        // "BY_AMOUNT" | "BY_QUANTITY"
     val value: BigDecimal,
     val accountId: Long,
     val cadence: String,     // "DAILY" | "WEEKLY" | "MONTHLY"
@@ -66,8 +66,8 @@ enum class RecurringCadence(val apiValue: String, val labelSr: String) {
 }
 
 enum class RecurringMode(val apiValue: String, val labelSr: String) {
-    BYAMOUNT("BYAMOUNT", "Po iznosu"),
-    BYQUANTITY("BYQUANTITY", "Po kolicini"),
+    BY_AMOUNT("BY_AMOUNT", "Po iznosu"),
+    BY_QUANTITY("BY_QUANTITY", "Po kolicini"),
 }
 
 enum class RecurringDirection(val apiValue: String, val labelSr: String) {
@@ -91,8 +91,8 @@ object RecurringOrderLabels {
     }
 
     fun modeLabel(api: String): String = when (api.uppercase()) {
-        "BYAMOUNT" -> "Po iznosu"
-        "BYQUANTITY" -> "Po kolicini"
+        "BY_AMOUNT" -> "Po iznosu"
+        "BY_QUANTITY" -> "Po kolicini"
         else -> api
     }
 

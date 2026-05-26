@@ -30,7 +30,7 @@ class RecurringOrderRepositoryTest {
         val expectedReq = CreateRecurringOrderRequest(
             listingId = 10L,
             direction = "BUY",
-            mode = "BYAMOUNT",
+            mode = "BY_AMOUNT",
             value = BigDecimal("100"),
             accountId = 5L,
             cadence = "MONTHLY",
@@ -38,7 +38,7 @@ class RecurringOrderRepositoryTest {
         )
         val response = RecurringOrderDto(
             id = 1L, listingId = 10L, listingTicker = "AAPL",
-            direction = "BUY", mode = "BYAMOUNT", value = BigDecimal("100"),
+            direction = "BUY", mode = "BY_AMOUNT", value = BigDecimal("100"),
             accountId = 5L, cadence = "MONTHLY", active = true,
         )
         coEvery { api.create(expectedReq) } returns Response.success(response)
@@ -46,7 +46,7 @@ class RecurringOrderRepositoryTest {
         val result = repo.create(
             listingId = 10L,
             direction = RecurringDirection.BUY,
-            mode = RecurringMode.BYAMOUNT,
+            mode = RecurringMode.BY_AMOUNT,
             value = BigDecimal("100"),
             accountId = 5L,
             cadence = RecurringCadence.MONTHLY,
@@ -59,19 +59,19 @@ class RecurringOrderRepositoryTest {
     @Test
     fun create_sellByQuantityWeekly_mapsCorrectly() = runTest {
         val expectedReq = CreateRecurringOrderRequest(
-            listingId = 20L, direction = "SELL", mode = "BYQUANTITY",
+            listingId = 20L, direction = "SELL", mode = "BY_QUANTITY",
             value = BigDecimal("3"), accountId = 7L, cadence = "WEEKLY",
             firstRun = null,
         )
         val response = RecurringOrderDto(
-            id = 2L, listingId = 20L, direction = "SELL", mode = "BYQUANTITY",
+            id = 2L, listingId = 20L, direction = "SELL", mode = "BY_QUANTITY",
             value = BigDecimal("3"), accountId = 7L, cadence = "WEEKLY", active = true,
         )
         coEvery { api.create(expectedReq) } returns Response.success(response)
 
         val result = repo.create(
             listingId = 20L, direction = RecurringDirection.SELL,
-            mode = RecurringMode.BYQUANTITY, value = BigDecimal("3"),
+            mode = RecurringMode.BY_QUANTITY, value = BigDecimal("3"),
             accountId = 7L, cadence = RecurringCadence.WEEKLY,
         )
         assertTrue(result is ApiResult.Success)
@@ -80,7 +80,7 @@ class RecurringOrderRepositoryTest {
     @Test
     fun pause_returnsUpdatedOrder() = runTest {
         val paused = RecurringOrderDto(
-            id = 1L, listingId = 10L, direction = "BUY", mode = "BYAMOUNT",
+            id = 1L, listingId = 10L, direction = "BUY", mode = "BY_AMOUNT",
             value = BigDecimal("100"), accountId = 5L, cadence = "MONTHLY",
             active = false,
         )
@@ -94,7 +94,7 @@ class RecurringOrderRepositoryTest {
     @Test
     fun resume_returnsActiveOrder() = runTest {
         val resumed = RecurringOrderDto(
-            id = 1L, listingId = 10L, direction = "BUY", mode = "BYAMOUNT",
+            id = 1L, listingId = 10L, direction = "BUY", mode = "BY_AMOUNT",
             value = BigDecimal("100"), accountId = 5L, cadence = "MONTHLY",
             active = true,
         )

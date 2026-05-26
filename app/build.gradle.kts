@@ -22,8 +22,9 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        // Default to Android emulator host alias for the local backend.
-        // Real devices override this through `local.properties` or build flavors later on.
+        // Default je Android emulator host alias (10.0.2.2 = host machine iz emulator-a).
+        // Debug buildType nasledjuje ovo (lokalni dev preko emulator-a + docker compose).
+        // Release buildType override-uje na K8s production URL — vidi buildTypes.release.
         buildConfigField("String", "API_BASE_URL", "\"http://10.0.2.2:8080/\"")
     }
 
@@ -31,6 +32,7 @@ android {
         debug {
             isMinifyEnabled = false
             buildConfigField("Boolean", "ENABLE_HTTP_LOGGING", "true")
+            // API_BASE_URL = "http://10.0.2.2:8080/" nasledjuje iz defaultConfig.
         }
         release {
             isMinifyEnabled = true
@@ -40,6 +42,19 @@ android {
                 "proguard-rules.pro"
             )
             buildConfigField("Boolean", "ENABLE_HTTP_LOGGING", "false")
+            // Production K8s deploy — fakultetski klaster sa Envoy Gateway HTTPRoute.
+            buildConfigField(
+                "String",
+                "API_BASE_URL",
+                "\"https://banka-2.radenkovic.rs/api/\""
+            )
+            // Potpisujemo release APK sa Android SDK debug.keystore — NIJE production-grade
+            // (debug keystore je share-ovan medju developerima i auto-generisan), ali za
+            // fakultetski projekt + GitHub Release distribuciju tim moze instalirati APK
+            // direkt sa Releases stranice. Za pravi production switch: kreirati custom
+            // keystore (keytool -genkey -keystore release.jks ...), dodati signingConfigs
+            // blok i ucitati lozinku iz local.properties (gitignored) ili GitHub Secrets.
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
 

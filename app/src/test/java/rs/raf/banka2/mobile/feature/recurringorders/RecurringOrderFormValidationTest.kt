@@ -52,10 +52,10 @@ class RecurringOrderFormValidationTest {
 
     @Test
     fun validate_byQuantityFractionalValue_returnsError() {
-        // 3.5 akcija nema smisla — BYQUANTITY ocekuje ceo broj.
+        // 3.5 akcija nema smisla — BY_QUANTITY ocekuje ceo broj.
         val form = RecurringOrderForm(
             selectedListing = listing,
-            mode = RecurringMode.BYQUANTITY,
+            mode = RecurringMode.BY_QUANTITY,
             value = BigDecimal("3.5"),
             accountId = 1L,
         )
@@ -68,7 +68,7 @@ class RecurringOrderFormValidationTest {
     fun validate_byQuantityIntegerValue_returnsNull() {
         val form = RecurringOrderForm(
             selectedListing = listing,
-            mode = RecurringMode.BYQUANTITY,
+            mode = RecurringMode.BY_QUANTITY,
             value = BigDecimal("3"),
             accountId = 1L,
         )
@@ -80,7 +80,7 @@ class RecurringOrderFormValidationTest {
         // Po iznosu su decimale dozvoljene (npr. 100.50 USD).
         val form = RecurringOrderForm(
             selectedListing = listing,
-            mode = RecurringMode.BYAMOUNT,
+            mode = RecurringMode.BY_AMOUNT,
             value = BigDecimal("100.50"),
             accountId = 1L,
         )
@@ -104,7 +104,7 @@ class RecurringOrderFormValidationTest {
         val form = RecurringOrderForm(
             selectedListing = listing,
             direction = RecurringDirection.BUY,
-            mode = RecurringMode.BYAMOUNT,
+            mode = RecurringMode.BY_AMOUNT,
             value = BigDecimal("100"),
             accountId = 5L,
             cadence = RecurringCadence.MONTHLY,
@@ -117,7 +117,7 @@ class RecurringOrderFormValidationTest {
         val form = RecurringOrderForm(
             selectedListing = listing,
             direction = RecurringDirection.SELL,
-            mode = RecurringMode.BYQUANTITY,
+            mode = RecurringMode.BY_QUANTITY,
             value = BigDecimal("5"),
             accountId = 5L,
             cadence = RecurringCadence.WEEKLY,

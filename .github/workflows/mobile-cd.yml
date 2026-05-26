@@ -1,0 +1,182 @@
+name: mobile-cd
+
+# Build APK + automatska GitHub Release na svaki git tag koji match-uje `v*`.
+# Trigger: push tag (npr. `git tag v1.0.0 && git push --tags`) ili manual workflow_dispatch.
+#
+# Build varijante:
+#   - assembleDebug   -> app-debug.apk     (BASE_URL = http://10.0.2.2:8080/, ENABLE_HTTP_LOGGING=true)
+#                         za lokalni dev preko Android emulator-a sa Docker compose backend-om
+#   - assembleRelease -> app-release.apk   (BASE_URL = https://banka-2.radenkovic.rs/api/, R8 + shrink)
+#                         za fizicki telefon koji udara na K8s production deploy
+#
+# Oba APK-a potpisana su sa Android SDK debug.keystore — auto-generise se prilikom prvog
+# build-a (~/.android/debug.keystore na GH Actions runner-u). Za pravi production keystore
+# (Play Store etc.) treba dodatni setup sa secrets.
+
+on:
+  push:
+    tags:
+      - 'v*'         # npr. v1.0.0, v1.0.0-rc1, v2.5.3
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag za release (npr. v1.0.0) — bez prefiks-a "refs/tags/"'
+        required: true
+        type: string
+
+permissions:
+  contents: write    # potrebno za softprops/action-gh-release (kreira Release + upload asset)
+
+jobs:
+  build-and-release:
+    name: Build APK + Create GitHub Release
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # full history potreban za auto-generated release notes (git log od prethodnog tag-a)
+
+      - name: Resolve tag name
+        id: tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "name=${{ github.event.inputs.tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "name=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+          fi
+
+      # AGP 9.2 + Kotlin 2.3.21 + Gradle 9.4 + jvmTarget 21 — JDK 21 je minimum za build.
+      # Match-uje mobile-ci.yml verziju.
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: temurin
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties', 'gradle/libs.versions.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+
+      # Lint + unit testovi pre release build-a — ne pravimo release APK ako nesto pada.
+      # Match-uje mobile-ci.yml: warningsAsErrors=true + abortOnError=true u app/build.gradle.kts.
+      - name: Lint (warnings as errors)
+        run: ./gradlew lintDebug --no-daemon --stacktrace
+
+      - name: Unit tests
+        run: ./gradlew testDebugUnitTest --no-daemon --stacktrace
+
+      # Generise debug.keystore ako ne postoji (idempotent — radi i lokalno i na CI-u).
+      # Bez ovog koraka assembleRelease moze pasti ako runner nikad nije izvrsio gradle build
+      # koji incidentno generise keystore. Eksplicitno radi stvar deterministic.
+      - name: Ensure debug keystore exists
+        run: |
+          KEYSTORE="$HOME/.android/debug.keystore"
+          if [ ! -f "$KEYSTORE" ]; then
+            mkdir -p "$HOME/.android"
+            keytool -genkey -v \
+              -keystore "$KEYSTORE" \
+              -storepass android \
+              -alias androiddebugkey \
+              -keypass android \
+              -keyalg RSA \
+              -keysize 2048 \
+              -validity 10000 \
+              -dname "CN=Android Debug,O=Android,C=US"
+          fi
+          ls -la "$KEYSTORE"
+
+      - name: Assemble debug + release APK
+        run: ./gradlew assembleDebug assembleRelease --no-daemon --stacktrace
+
+      - name: Rename APKs sa tag-om
+        run: |
+          TAG="${{ steps.tag.outputs.name }}"
+          mkdir -p artifacts
+          cp app/build/outputs/apk/debug/app-debug.apk \
+             "artifacts/banka2-mobile-${TAG}-debug.apk"
+          cp app/build/outputs/apk/release/app-release.apk \
+             "artifacts/banka2-mobile-${TAG}-release.apk"
+          ls -lh artifacts/
+
+      - name: Upload APKs kao workflow artifacts (backup ako Release fail-uje)
+        uses: actions/upload-artifact@v4
+        with:
+          name: banka2-mobile-${{ steps.tag.outputs.name }}-apks
+          path: artifacts/*.apk
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Create GitHub Release sa APK-ovima
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.name }}
+          name: 'Banka 2 Mobile ${{ steps.tag.outputs.name }}'
+          body: |
+            ## Banka 2 Mobile APK — ${{ steps.tag.outputs.name }}
+
+            Android aplikacija za Banka 2 — fakultetski projekt Tim 2, Softversko inzenjerstvo, RAF 2025/26.
+
+            ### Instalacija na telefon
+
+            1. **Download `banka2-mobile-${{ steps.tag.outputs.name }}-release.apk`** ispod (sekcija **Assets**).
+            2. Otvori APK na telefonu — Android ce te pitati za dozvolu "Install unknown apps" za browser ili file manager. Klikni "Allow".
+            3. App ce se instalirati i pojavice se ikona "Banka 2" u app drawer-u.
+
+            ### Login
+
+            Posle prvog otvaranja, login sa nekim od seed kredencijala:
+
+            | Uloga | Email | Lozinka |
+            |-------|-------|---------|
+            | Klijent | `stefan.jovanovic@gmail.com` | `Klijent12345` |
+            | Klijent | `milica.nikolic@gmail.com` | `Klijent12345` |
+            | Supervizor | `nikola.milenkovic@banka.rs` | `Zaposleni12` |
+            | Agent | `tamara.pavlovic@banka.rs` | `Zaposleni12` |
+            | Admin | `marko.petrovic@banka.rs` | `Admin12345` |
+
+            ### Backend
+
+            Release APK direktno udara na K8s production deploy: `https://banka-2.radenkovic.rs/api/`.
+            Internet konekcija obavezna — radi preko fakultetskog `banka-2.radenkovic.rs` domena (HTTPS).
+
+            ### APK varijante
+
+            - **`banka2-mobile-*-release.apk`** — production build (R8 minify + resource shrink), manji, optimized — **za telefon**.
+            - **`banka2-mobile-*-debug.apk`** — dev build sa http logging-om + emulator BASE_URL `http://10.0.2.2:8080/` — samo za Android emulator + lokalni Docker stack.
+
+            ### Sta NE radi (out of scope)
+
+            - **FCM push notifikacije** — `google-services.json` nije konfigurisan. In-app polling notifikacije rade (zvonce u home screen-u, 30s poll).
+            - **Biometric login** — JWT je in-memory, treba ponovo login posle restart app-a.
+            - **Arbitro AI asistent** — Web-only feature, Mobile nema chat panel.
+
+            ### Tehnicki detalji
+
+            - APK potpisan sa Android SDK debug.keystore (NIJE production-grade signing).
+            - minSdk 24 (Android 7.0+), targetSdk 36.
+            - Kotlin 2.3.21 + Jetpack Compose + Hilt + Retrofit + Moshi.
+
+            ---
+
+            Auto-generisane commit changes ispod (vidi **What's Changed**).
+          generate_release_notes: true       # auto-generate "What's Changed" sekciju iz commit log-a
+          files: |
+            artifacts/banka2-mobile-${{ steps.tag.outputs.name }}-release.apk
+            artifacts/banka2-mobile-${{ steps.tag.outputs.name }}-debug.apk
+          fail_on_unmatched_files: true
+          draft: false
+          prerelease: ${{ contains(steps.tag.outputs.name, '-rc') || contains(steps.tag.outputs.name, '-beta') || contains(steps.tag.outputs.name, '-alpha') }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

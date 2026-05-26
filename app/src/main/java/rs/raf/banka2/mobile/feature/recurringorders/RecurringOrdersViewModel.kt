@@ -32,7 +32,7 @@ private const val SEARCH_DEBOUNCE_MS = 350L
  * Holduje 2 stanja:
  *  1) listu trajnih naloga (sa 3-tab filterom Aktivni/Pauzirani/Svi)
  *  2) "nov nalog" formu sa listing autocomplete-om (debounce 350ms),
- *     direction toggle BUY/SELL, mode toggle BYAMOUNT/BYQUANTITY, value input,
+ *     direction toggle BUY/SELL, mode toggle BY_AMOUNT/BY_QUANTITY, value input,
  *     account picker, cadence picker.
  *
  * Pause/Resume/Cancel se rade inline sa per-row "submittingId" indikatorom da
@@ -251,8 +251,8 @@ class RecurringOrdersViewModel @Inject constructor(
             if (form.value == null || form.value <= BigDecimal.ZERO) {
                 return "Vrednost mora biti pozitivan broj."
             }
-            if (form.mode == RecurringMode.BYQUANTITY) {
-                // BYQUANTITY mora biti ceo broj akcija
+            if (form.mode == RecurringMode.BY_QUANTITY) {
+                // BY_QUANTITY mora biti ceo broj akcija
                 if (form.value.stripTrailingZeros().scale() > 0) {
                     return "Po kolicini: vrednost mora biti ceo broj akcija."
                 }
@@ -268,7 +268,7 @@ data class RecurringOrderForm(
     val searchResults: List<ListingDto> = emptyList(),
     val selectedListing: ListingDto? = null,
     val direction: RecurringDirection = RecurringDirection.BUY,
-    val mode: RecurringMode = RecurringMode.BYAMOUNT,
+    val mode: RecurringMode = RecurringMode.BY_AMOUNT,
     val valueText: String = "",
     val value: BigDecimal? = null,
     val accountId: Long? = null,
