@@ -16,9 +16,6 @@ interface TaxApi {
         @Query("name") name: String? = null
     ): Response<List<TaxRecordDto>>
 
-    @GET("tax/my")
-    suspend fun myRecord(): Response<TaxRecordDto>
-
     @POST("tax/calculate")
     suspend fun calculate(): Response<Unit>
 

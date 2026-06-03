@@ -94,9 +94,6 @@ fun RecipientsScreen(
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
-                                if (!recipient.description.isNullOrBlank()) {
-                                    Text(recipient.description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                }
                             }
                             IconButton(onClick = { editing = recipient }) {
                                 Icon(Icons.Filled.Edit, null, tint = MaterialTheme.colorScheme.primary)
@@ -116,8 +113,8 @@ fun RecipientsScreen(
             initial = null,
             isLoading = state.submitting,
             onDismiss = { creating = false },
-            onConfirm = { name, account, description ->
-                viewModel.create(name, account, description)
+            onConfirm = { name, account ->
+                viewModel.create(name, account)
                 creating = false
             }
         )
@@ -127,8 +124,8 @@ fun RecipientsScreen(
             initial = current,
             isLoading = state.submitting,
             onDismiss = { editing = null },
-            onConfirm = { name, account, description ->
-                viewModel.update(current.id, name, account, description)
+            onConfirm = { name, account ->
+                viewModel.update(current.id, name, account)
                 editing = null
             }
         )
@@ -140,11 +137,10 @@ private fun RecipientDialog(
     initial: RecipientDto?,
     isLoading: Boolean,
     onDismiss: () -> Unit,
-    onConfirm: (String, String, String?) -> Unit
+    onConfirm: (String, String) -> Unit
 ) {
     var name by remember { mutableStateOf(initial?.name.orEmpty()) }
     var accountNumber by remember { mutableStateOf(initial?.accountNumber.orEmpty()) }
-    var description by remember { mutableStateOf(initial?.description.orEmpty()) }
     val canSave = name.isNotBlank() && accountNumber.isNotBlank() && !isLoading
 
     AlertDialog(
@@ -161,19 +157,11 @@ private fun RecipientDialog(
                     keyboardType = KeyboardType.Number,
                     modifier = Modifier.fillMaxWidth()
                 )
-                Spacer(Modifier.height(8.dp))
-                AppTextField(
-                    value = description,
-                    onValueChange = { description = it },
-                    label = "Opis (opciono)",
-                    singleLine = false,
-                    modifier = Modifier.fillMaxWidth()
-                )
             }
         },
         confirmButton = {
             TextButton(
-                onClick = { onConfirm(name.trim(), accountNumber.trim(), description.takeIf { it.isNotBlank() }) },
+                onClick = { onConfirm(name.trim(), accountNumber.trim()) },
                 enabled = canSave
             ) {
                 Text(if (isLoading) "Cuvam..." else "Sacuvaj")

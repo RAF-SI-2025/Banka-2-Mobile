@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.withContext
+import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -98,7 +99,18 @@ class AuthStore @Inject constructor(
                 EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
                 EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
             )
-        }.getOrElse {
+        }.getOrElse { error ->
+            // R2 1496 [sec]: ranije je fallback bio TIH — JWT bi se cuvao u
+            // plaintext SharedPreferences-u bez ikakve telemetrije. Logujemo
+            // upozorenje (Timber crash-reporting tree ga moze prosrediti ka
+            // observability backend-u) da bismo znali kad se desava i koliko
+            // cesto. NB: ne logujemo sam token. Buduca tvrdja sigurnosti
+            // (DataStore + Tink) je posebna feature stavka, van P3 scope-a.
+            Timber.w(
+                error,
+                "AuthStore: EncryptedSharedPreferences nedostupan (Keystore?) — " +
+                    "fallback na plaintext SharedPreferences. Token na ovom uredjaju NIJE sifrovan at-rest."
+            )
             context.getSharedPreferences(FILE_NAME, Context.MODE_PRIVATE)
         }
     }

@@ -4,14 +4,14 @@ import rs.raf.banka2.mobile.core.network.ApiError
 import rs.raf.banka2.mobile.core.network.ApiResult
 import rs.raf.banka2.mobile.core.network.map
 import rs.raf.banka2.mobile.core.network.safeApiCall
+import rs.raf.banka2.mobile.core.util.stableLongId
 import rs.raf.banka2.mobile.data.api.OtcApi
-import rs.raf.banka2.mobile.data.dto.otc.AcceptOtcOfferDto
 import rs.raf.banka2.mobile.data.dto.otc.CounterOtcInterbankOfferRequest
 import rs.raf.banka2.mobile.data.dto.otc.CounterOtcOfferDto
 import rs.raf.banka2.mobile.data.dto.otc.CreateOtcInterbankOfferRequest
 import rs.raf.banka2.mobile.data.dto.otc.CreateOtcOfferDto
-import rs.raf.banka2.mobile.data.dto.otc.ExerciseRequestDto
 import rs.raf.banka2.mobile.data.dto.otc.OtcContractDto
+import rs.raf.banka2.mobile.data.dto.otc.OtcExerciseResultDto
 import rs.raf.banka2.mobile.data.dto.otc.OtcInterbankContractApiDto
 import rs.raf.banka2.mobile.data.dto.otc.OtcInterbankListingApiDto
 import rs.raf.banka2.mobile.data.dto.otc.OtcInterbankOfferApiDto
@@ -35,13 +35,17 @@ class OtcRepository @Inject constructor(
     }
 
     private fun OtcInterbankListingApiDto.toUiListing(): OtcListingDto = OtcListingDto(
-        listingId = ("$bankCode:$sellerPublicId:$listingTicker").hashCode().toLong(),
+        // R2-1482: stabilan 64-bitni id (FNV-1a) umesto `String.hashCode().toLong()`
+        // (32-bit → kolizije → Compose duplicate-key crash u discovery listi).
+        listingId = ("$bankCode:$sellerPublicId:$listingTicker").stableLongId(),
         ticker = listingTicker,
         name = listingName,
         sellerUserId = null,
         sellerName = sellerName,
         sellerRole = sellerRole,
-        publicQuantity = availableQuantity.toInt(),
+        // R2-1493: OTC kolicina je broj akcija (ceo broj). `Double.toInt()` truncate-uje
+        // (10.99 → 10 = tiho gubljenje), pa zaokruzujemo na najblizi ceo broj.
+        publicQuantity = roundQuantity(availableQuantity),
         currentPrice = currentPrice,
         currency = listingCurrency,
         bankRoutingNumber = bankCode,
@@ -81,13 +85,14 @@ class OtcRepository @Inject constructor(
     }
 
     private fun OtcInterbankOfferApiDto.toUiOffer(): OtcOfferDto = OtcOfferDto(
-        id = offerId.hashCode().toLong(),
+        // R2-1482: stabilan 64-bitni id (FNV-1a) — Compose list key; `foreignId` nosi pravi UUID.
+        id = offerId.stableLongId(),
         listingId = 0L,
         listingTicker = listingTicker,
         listingName = listingName,
         currentPrice = currentPrice,
         currency = listingCurrency,
-        quantity = quantity.toInt(),
+        quantity = roundQuantity(quantity), // R2-1493: zaokruzi (ne truncate)
         pricePerStock = pricePerStock,
         premium = premium,
         settlementDate = settlementDate,
@@ -128,8 +133,8 @@ class OtcRepository @Inject constructor(
 
     suspend fun accept(inter: Boolean, offer: OtcOfferDto, buyerAccountId: Long?): ApiResult<OtcOfferDto> {
         if (!inter) {
-            val body = AcceptOtcOfferDto(buyerAccountId)
-            return safeApiCall { api.acceptIntra(offer.id, body) }
+            // BE cita buyerAccountId kao query param (ne body).
+            return safeApiCall { api.acceptIntra(offer.id, buyerAccountId) }
         }
         val foreignId = offer.foreignId ?: return ApiResult.Failure(
             ApiError(httpCode = 400, message = "Inter-bank ponuda nema foreignId.", kind = ApiError.Kind.Validation)
@@ -143,11 +148,12 @@ class OtcRepository @Inject constructor(
     }
 
     private fun OtcInterbankContractApiDto.toUiContract(): OtcContractDto = OtcContractDto(
-        id = id.hashCode().toLong(),
+        // R2-1482: stabilan 64-bitni id (FNV-1a) — Compose list key; `foreignId` nosi pravi UUID.
+        id = id.stableLongId(),
         listingId = listingId ?: 0L,
         listingTicker = listingTicker,
         listingName = listingName,
-        quantity = quantity.toInt(),
+        quantity = roundQuantity(quantity), // R2-1493: zaokruzi (ne truncate)
         strikePrice = strikePrice,
         premium = premium,
         settlementDate = settlementDate,
@@ -161,18 +167,44 @@ class OtcRepository @Inject constructor(
         createdAt = createdAt,
         foreignId = id
     )
-    suspend fun exercise(inter: Boolean, contract: OtcContractDto, buyerAccountId: Long?): ApiResult<OtcContractDto> {
-        if (!inter) {
-            val body = ExerciseRequestDto(buyerAccountId)
-            return safeApiCall { api.exerciseIntra(contract.id, body) }
-        }
+    /**
+     * Intra-bank exercise (Model-B SAGA orkestrator). BE izvrsava SAGA-u
+     * sinhrono i vraca terminalni `OtcExerciseResultDto` sa `sagaId`-em za
+     * polling preko `GET /otc/saga/{sagaId}`.
+     */
+    suspend fun exerciseIntra(contract: OtcContractDto, buyerAccountId: Long?): ApiResult<OtcExerciseResultDto> =
+        safeApiCall { api.exerciseIntra(contract.id, buyerAccountId) }
+
+    /**
+     * Inter-bank exercise (cross-bank wrapper). Vraca azuriran ugovor; SAGA faze
+     * BE wrapper ne ekspozira, pa se progress prati pollovanjem `listMyInterContracts`.
+     */
+    suspend fun exerciseInter(contract: OtcContractDto, buyerAccountId: Long?): ApiResult<OtcContractDto> {
         val foreignId = contract.foreignId ?: return ApiResult.Failure(
             ApiError(httpCode = 400, message = "Inter-bank ugovor nema foreignId.", kind = ApiError.Kind.Validation)
         )
         return safeApiCall { api.exerciseInter(foreignId, buyerAccountId) }.map { it.toUiContract() }
     }
 
-    suspend fun sagaStatusIntra(contractId: Long): ApiResult<SagaStatusDto> = safeApiCall { api.sagaStatusIntra(contractId) }
+    /** Polling stanja SAGA instance preko `GET /otc/saga/{sagaId}`. */
+    suspend fun sagaStatusIntra(sagaId: String): ApiResult<SagaStatusDto> = safeApiCall { api.sagaStatusIntra(sagaId) }
+
+    /**
+     * R1-479: rucno odustajanje od intra-bank OTC ugovora. BE `POST /otc/contracts/{id}/abandon`.
+     * Samo intra-bank — inter-bank abandon ne postoji u BE wrapper-u (vraca Validation failure).
+     */
+    suspend fun abandonContract(contract: OtcContractDto): ApiResult<OtcContractDto> {
+        if (contract.foreign) {
+            return ApiResult.Failure(
+                ApiError(
+                    httpCode = 400,
+                    message = "Odustajanje od inter-bank ugovora nije podrzano.",
+                    kind = ApiError.Kind.Validation
+                )
+            )
+        }
+        return safeApiCall { api.abandonIntra(contract.id) }
+    }
 
     suspend fun pollInterContractStatus(foreignId: String): ApiResult<String> =
         safeApiCall { api.listMyInterContracts(null) }.map { list ->
@@ -195,14 +227,33 @@ class OtcRepository @Inject constructor(
             api.negotiationHistory(
                 status = status?.takeIf { it.isNotBlank() && it != "ALL" },
                 modifiedById = modifiedById,
-                from = from?.takeIf { it.isNotBlank() },
-                to = to?.takeIf { it.isNotBlank() },
+                // BE radi `LocalDateTime.parse(raw)` — bare `YYYY-MM-DD` baca
+                // DateTimeParseException → IllegalArgument → 400. Normalizujemo
+                // date-only filter na pun ISO LocalDateTime (od pocetka / do kraja dana).
+                from = from?.takeIf { it.isNotBlank() }?.let { toDayStart(it) },
+                to = to?.takeIf { it.isNotBlank() }?.let { toDayEnd(it) },
                 page = page,
                 size = size
             )
         }
 
+    /** `2026-05-01` -> `2026-05-01T00:00:00`; vec-puni ISO LocalDateTime ostavlja netaknut. */
+    private fun toDayStart(raw: String): String =
+        if (raw.length == 10 && !raw.contains('T')) "${raw}T00:00:00" else raw
+
+    /** `2026-05-30` -> `2026-05-30T23:59:59`; vec-puni ISO LocalDateTime ostavlja netaknut. */
+    private fun toDayEnd(raw: String): String =
+        if (raw.length == 10 && !raw.contains('T')) "${raw}T23:59:59" else raw
+
     /** Hronoloski lanac kontraponuda jednog pregovora (sve iteracije). */
     suspend fun negotiationHistoryChain(negotiationId: Long): ApiResult<List<OtcNegotiationHistoryDto>> =
         safeApiCall { api.negotiationHistoryChain(negotiationId) }
+
+    /**
+     * R2-1493: BE inter-bank OTC kolicina je `Double` (deljeni decimal protokol), a
+     * Mobile model je `Int` (broj akcija). `Double.toInt()` TRUNCATE-uje (10.99 → 10),
+     * sto je tiho gubljenje. OTC kolicina je broj akcija (ceo broj) pa zaokruzujemo
+     * na najblizi ceo broj umesto da odsecamo.
+     */
+    private fun roundQuantity(value: Double): Int = Math.round(value).toInt()
 }

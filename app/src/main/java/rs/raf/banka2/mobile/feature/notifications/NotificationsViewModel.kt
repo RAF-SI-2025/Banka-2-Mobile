@@ -174,6 +174,9 @@ sealed interface NotificationTarget {
     data object Cards : NotificationTarget
     data object Loans : NotificationTarget
     data object Accounts : NotificationTarget
+    // R1 689: BE emituje i RECURRING_ORDER / PRICE_ALERT reference.
+    data object RecurringOrders : NotificationTarget
+    data object PriceAlerts : NotificationTarget
     data class QuickApprovePayment(val paymentId: Long, val notificationCreatedAt: String) :
         NotificationTarget
 }
@@ -185,10 +188,11 @@ object NotificationDeepLink {
      * nemaju logican target).
      */
     fun resolve(n: NotificationDto): NotificationTarget? {
-        // Specijalan slucaj: PAYMENT_PENDING_APPROVAL -> Quick Approve flow (Mobile bonus #7).
-        if (n.type == "PAYMENT_PENDING_APPROVAL" && n.relatedEntityId != null) {
-            return NotificationTarget.QuickApprovePayment(n.relatedEntityId, n.createdAt)
-        }
+        // P1-mobile-banking-1: nekadasnji specijalni slucaj `PAYMENT_PENDING_APPROVAL`
+        // je UKLONJEN — taj tip NE postoji u BE `NotificationType` enum-u (BE salje samo
+        // `PAYMENT`), pa se Quick Approve deep-link iz in-app notif liste nikad nije
+        // okidao. Quick Approve flow ostaje dostupan kroz FCM push (nosi sopstveni
+        // payload). `referenceType=PAYMENT` notifikacije sada vode na standardni Payments ekran.
         val type = n.relatedEntityType?.uppercase() ?: return null
         return when (type) {
             "PAYMENT" -> NotificationTarget.Payments
@@ -197,8 +201,10 @@ object NotificationDeepLink {
             "FUND" -> n.relatedEntityId?.let { NotificationTarget.Fund(it) }
                 ?: NotificationTarget.Funds
             "CARD" -> NotificationTarget.Cards
-            "LOAN" -> NotificationTarget.Loans
+            "LOAN", "LOAN_REQUEST" -> NotificationTarget.Loans
             "ACCOUNT" -> NotificationTarget.Accounts
+            "RECURRING_ORDER" -> NotificationTarget.RecurringOrders
+            "PRICE_ALERT" -> NotificationTarget.PriceAlerts
             else -> null
         }
     }

@@ -1,6 +1,7 @@
 package rs.raf.banka2.mobile.data.dto.portfolio
 
 import com.squareup.moshi.JsonClass
+import java.math.BigDecimal
 
 @JsonClass(generateAdapter = true)
 data class PortfolioItemDto(
@@ -11,15 +12,15 @@ data class PortfolioItemDto(
     val listingType: String? = null,         // STOCK / FUTURES / OPTION
     val optionType: String? = null,          // CALL / PUT (samo OPTION)
     val optionId: Long? = null,              // direktan ID opcije za exercise
-    val strikePrice: Double? = null,
-    val premium: Double? = null,
+    val strikePrice: BigDecimal? = null,
+    val premium: BigDecimal? = null,
     val settlementDate: String? = null,
     val itm: Boolean? = null,
     val quantity: Int = 0,
-    val averageBuyPrice: Double = 0.0,
-    val currentPrice: Double? = null,
-    val totalValue: Double? = null,
-    val profit: Double? = null,
+    val averageBuyPrice: BigDecimal = BigDecimal.ZERO,
+    val currentPrice: BigDecimal? = null,
+    val totalValue: BigDecimal? = null,
+    val profit: BigDecimal? = null,
     val profitPercent: Double? = null,
     val publicQuantity: Int? = null,
     val reservedQuantity: Int? = null,
@@ -31,10 +32,10 @@ data class PortfolioItemDto(
 
 @JsonClass(generateAdapter = true)
 data class PortfolioSummaryDto(
-    val totalValue: Double = 0.0,
-    val totalProfit: Double = 0.0,
+    val totalValue: BigDecimal = BigDecimal.ZERO,
+    val totalProfit: BigDecimal = BigDecimal.ZERO,
     val totalProfitPercent: Double? = null,
-    val taxOwed: Double? = null,
+    val taxOwed: BigDecimal? = null,
     val currency: String? = null
 )
 

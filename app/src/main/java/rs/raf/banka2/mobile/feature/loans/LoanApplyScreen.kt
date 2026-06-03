@@ -97,6 +97,28 @@ fun LoanApplyScreen(
                 Spacer(Modifier.height(8.dp))
                 AppTextField(value = state.loanType, onValueChange = viewModel::setType, label = "Tip (CASH/MORTGAGE/...)", modifier = Modifier.fillMaxWidth())
                 Spacer(Modifier.height(8.dp))
+                // P1-mobile-banking-1 (R1-131): interestType je BE @NotNull (FIXED/VARIABLE).
+                Text("Tip kamate", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(Modifier.height(4.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf("FIXED" to "Fiksna", "VARIABLE" to "Varijabilna").forEach { (value, label) ->
+                        val selected = state.interestType == value
+                        Text(
+                            text = label,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(
+                                    if (selected) MaterialTheme.colorScheme.primary
+                                    else MaterialTheme.colorScheme.surfaceContainerHigh
+                                )
+                                .clickable { viewModel.setInterestType(value) }
+                                .padding(horizontal = 16.dp, vertical = 8.dp)
+                        )
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
                 Row {
                     AppTextField(value = state.amount, onValueChange = viewModel::setAmount, label = "Iznos", keyboardType = KeyboardType.Decimal, modifier = Modifier.weight(1f))
                     Spacer(Modifier.width(8.dp))

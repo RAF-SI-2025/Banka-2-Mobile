@@ -11,13 +11,22 @@ import rs.raf.banka2.mobile.data.dto.common.PageResponse
  * Dostupno samo ADMIN + SUPERVISOR rolama (BE vraca 403 inace).
  */
 interface AuditApi {
-    @GET("audit-logs")
+    /**
+     * BE: `@RequestMapping("/audit")` + `@GetMapping`, parametri
+     * `actionType` / `actorId` (Long) / `actorName` (String) / `from` / `to`
+     * (ISO LocalDateTime String) / `page` / `size`.
+     *
+     * Gateway rutira `/audit` -> trading-service. Akter se filtrira po `actorId`
+     * (numericki ID) ILI `actorName` (ime aktera/supervizora — Sc45; BE razresi
+     * ime -> actorId-eve preko banka-core). Ako su oba data, BE bira `actorId`.
+     */
+    @GET("audit")
     suspend fun queryAuditLogs(
         @Query("actionType") actionType: String? = null,
         @Query("actorId") actorId: Long? = null,
-        @Query("actorEmail") actorEmail: String? = null,
-        @Query("dateFrom") dateFrom: String? = null, // ISO YYYY-MM-DD
-        @Query("dateTo") dateTo: String? = null,
+        @Query("actorName") actorName: String? = null,
+        @Query("from") from: String? = null, // ISO LocalDateTime, npr. 2026-05-30T00:00:00
+        @Query("to") to: String? = null,     // ISO LocalDateTime, npr. 2026-05-30T23:59:59
         @Query("page") page: Int = 0,
         @Query("size") size: Int = 20
     ): Response<PageResponse<AuditLogDto>>

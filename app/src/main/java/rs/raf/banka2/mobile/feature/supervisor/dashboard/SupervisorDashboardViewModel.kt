@@ -83,7 +83,7 @@ data class SupervisorDashboardState(
     val done: Int = 0,
     val employeesActive: Int = 0,
     val employeesTotal: Int = 0,
-    val portfolioValue: Double = 0.0,
-    val portfolioProfit: Double = 0.0,
-    val taxOwed: Double? = null
+    val portfolioValue: java.math.BigDecimal = java.math.BigDecimal.ZERO,
+    val portfolioProfit: java.math.BigDecimal = java.math.BigDecimal.ZERO,
+    val taxOwed: java.math.BigDecimal? = null
 )

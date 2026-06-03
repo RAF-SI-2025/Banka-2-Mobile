@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -152,7 +153,13 @@ fun ClientHomeContent(
             item { SectionTitle("Kursna lista", icon = Icons.Filled.CurrencyExchange) }
             item {
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    items(state.exchangeRates, key = { it.currency ?: it.fromCurrency ?: it.hashCode().toString() }) { rate ->
+                    // R3-1604: jedinstven, stabilan kompozitni key (uracunava index)
+                    // da dva kursa bez `currency`/`fromCurrency` ne kolidiraju
+                    // (`hashCode().toString()` je mogao da se podudari i srusi listu).
+                    itemsIndexed(
+                        state.exchangeRates,
+                        key = { index, it -> "${it.currency.orEmpty()}-${it.fromCurrency.orEmpty()}-${it.toCurrency.orEmpty()}-$index" }
+                    ) { _, rate ->
                         ExchangeRateCard(rate)
                     }
                 }
@@ -466,7 +473,10 @@ private fun TransactionRow(p: PaymentListItemDto, myAccountNumbers: List<String>
 
 @Composable
 private fun ExchangeRateCard(rate: ExchangeRateDto) {
-    val rsdPerUnit = rate.middleRate?.takeIf { it > 0 }?.let { 1 / it } ?: rate.rate ?: 0.0
+    val rsdPerUnit: java.math.BigDecimal = rate.middleRate
+        ?.takeIf { it > java.math.BigDecimal.ZERO }
+        ?.let { java.math.BigDecimal.ONE.divide(it, 6, java.math.RoundingMode.HALF_UP) }
+        ?: rate.rate ?: java.math.BigDecimal.ZERO
     Box(
         modifier = Modifier
             .width(150.dp)

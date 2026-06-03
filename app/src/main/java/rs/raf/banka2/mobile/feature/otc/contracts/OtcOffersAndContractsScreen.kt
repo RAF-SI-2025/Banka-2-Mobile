@@ -66,6 +66,7 @@ fun OtcOffersAndContractsScreen(
     val snackbar = remember { SnackbarHostState() }
     var counterOffer by remember { mutableStateOf<OtcOfferDto?>(null) }
     var exerciseTarget by remember { mutableStateOf<OtcContractDto?>(null) }
+    var abandonTarget by remember { mutableStateOf<OtcContractDto?>(null) }
 
     LaunchedEffect(Unit) {
         viewModel.events.collect { if (it is OtcOffersAndContractsEvent.Toast) snackbar.showSnackbar(it.message) }
@@ -106,7 +107,8 @@ fun OtcOffersAndContractsScreen(
                 OtcTab.ContractsDomestic, OtcTab.ContractsForeign -> ContractsList(
                     contracts = state.contracts,
                     loading = state.loading,
-                    onExercise = { exerciseTarget = it }
+                    onExercise = { exerciseTarget = it },
+                    onAbandon = { abandonTarget = it }
                 )
             }
         }
@@ -126,10 +128,26 @@ fun OtcOffersAndContractsScreen(
     exerciseTarget?.let { contract ->
         ExerciseDialog(
             contract = contract,
+            accounts = state.accounts,
+            selectedAccountId = state.selectedAccountId,
+            onSelectAccount = viewModel::selectAccount,
             onDismiss = { exerciseTarget = null },
             onConfirm = {
-                viewModel.startExercise(contract, null)
+                // R1-593: prosledi izabrani racun (ne null). VM koristi selectedAccountId
+                // kao default ako ovde ne damo eksplicitan.
+                viewModel.startExercise(contract, state.selectedAccountId)
                 exerciseTarget = null
+            }
+        )
+    }
+
+    abandonTarget?.let { contract ->
+        AbandonContractDialog(
+            contract = contract,
+            onDismiss = { abandonTarget = null },
+            onConfirm = {
+                viewModel.abandonContract(contract)
+                abandonTarget = null
             }
         )
     }
@@ -289,13 +307,23 @@ private fun OfferCard(
                 }
             }
         }
-        if (offer.status.equals("ACTIVE", true)) {
+        // R1-478: akcije (Prihvati/Kontra/Odustani) se prikazuju SAMO kad je red
+        // na nama (`myTurn`). Ranije su se prikazivale za svaki ACTIVE offer →
+        // korisnik je akciju radio "van reda" → BE vraca 409 (not your turn).
+        if (offer.status.equals("ACTIVE", true) && offer.myTurn) {
             Spacer(Modifier.height(8.dp))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 PrimaryButton(text = "Prihvati", onClick = onAccept, modifier = Modifier.weight(1f))
                 SecondaryButton(text = "Kontra", onClick = onCounter, modifier = Modifier.weight(1f))
                 DangerButton(text = "Odustani", onClick = onDecline, modifier = Modifier.weight(1f))
             }
+        } else if (offer.status.equals("ACTIVE", true)) {
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "Ceka se poteza druge strane…",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }
@@ -304,7 +332,8 @@ private fun OfferCard(
 private fun ContractsList(
     contracts: List<OtcContractDto>,
     loading: Boolean,
-    onExercise: (OtcContractDto) -> Unit
+    onExercise: (OtcContractDto) -> Unit,
+    onAbandon: (OtcContractDto) -> Unit
 ) {
     LazyColumn(
         verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -362,6 +391,11 @@ private fun ContractsList(
                 if (contract.status.equals("ACTIVE", true) && contract.myRole.equals("BUYER", true)) {
                     Spacer(Modifier.height(8.dp))
                     PrimaryButton(text = "Iskoristi", onClick = { onExercise(contract) }, modifier = Modifier.fillMaxWidth())
+                    // R1-479: kupac moze i da odustane od ugovora (intra) — premija se ne vraca.
+                    if (!contract.foreign) {
+                        Spacer(Modifier.height(6.dp))
+                        DangerButton(text = "Odustani od ugovora", onClick = { onAbandon(contract) }, modifier = Modifier.fillMaxWidth())
+                    }
                 }
             }
         }
@@ -409,6 +443,9 @@ private fun CounterOfferDialog(
 @Composable
 private fun ExerciseDialog(
     contract: OtcContractDto,
+    accounts: List<rs.raf.banka2.mobile.data.dto.account.AccountDto>,
+    selectedAccountId: Long?,
+    onSelectAccount: (Long?) -> Unit,
     onDismiss: () -> Unit,
     onConfirm: () -> Unit
 ) {
@@ -422,6 +459,39 @@ private fun ExerciseDialog(
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurface
                 )
+                // R1-593: izbor racuna za podmirenje (buyerAccountId). Default je
+                // selektovani (RSD-preferiran) racun; korisnik moze da promeni.
+                if (accounts.isNotEmpty()) {
+                    Spacer(Modifier.height(12.dp))
+                    Text(
+                        "Racun za podmirenje:",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        items(accounts, key = { it.id }) { account ->
+                            val isSelected = account.id == selectedAccountId
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(
+                                        if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.22f)
+                                        else MaterialTheme.colorScheme.surfaceContainerHigh
+                                    )
+                                    .clickable { onSelectAccount(account.id) }
+                                    .padding(horizontal = 12.dp, vertical = 6.dp)
+                            ) {
+                                Text(
+                                    "${account.accountNumber} (${account.currency ?: "RSD"})",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
+                                )
+                            }
+                        }
+                    }
+                }
                 if (contract.foreign) {
                     Spacer(Modifier.height(8.dp))
                     Text(
@@ -432,8 +502,33 @@ private fun ExerciseDialog(
                 }
             }
         },
-        confirmButton = { TextButton(onClick = onConfirm) { Text("Pokreni") } },
+        confirmButton = {
+            TextButton(onClick = onConfirm, enabled = accounts.isEmpty() || selectedAccountId != null) {
+                Text("Pokreni")
+            }
+        },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Otkazi") } }
+    )
+}
+
+@Composable
+private fun AbandonContractDialog(
+    contract: OtcContractDto,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Odustani od ugovora") },
+        text = {
+            Text(
+                "Odustajes od ugovora #${contract.id}. Placena premija (${MoneyFormatter.format(contract.premium, 2)}) NECE biti vracena. Da li si siguran?",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        },
+        confirmButton = { TextButton(onClick = onConfirm) { Text("Odustani") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Nazad") } }
     )
 }
 

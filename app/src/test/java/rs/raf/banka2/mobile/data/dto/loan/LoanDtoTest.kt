@@ -60,16 +60,42 @@ class LoanDtoTest {
 
     @Test
     fun loan_application_request_carries_bigdecimal_amount_and_income() {
+        // P1-mobile-banking-1 (R1-131): DTO uskladjen sa BE LoanRequestDto
+        // (interestType + repaymentPeriod + accountNumber + currency obavezni).
         val req = LoanApplicationDto(
             loanType = "CASH",
+            interestType = "FIXED",
             amount = BigDecimal("1500000.00"),
-            durationMonths = 36,
-            purpose = "Renoviranje",
+            currency = "RSD",
+            repaymentPeriod = 36,
+            accountNumber = "222-ACC",
+            loanPurpose = "Renoviranje",
             monthlyIncome = BigDecimal("85000.50"),
             otpCode = "123456"
         )
         assertEquals(BigDecimal("1500000.00"), req.amount)
         assertEquals(BigDecimal("85000.50"), req.monthlyIncome)
+    }
+
+    @Test
+    fun loan_application_request_serializes_be_field_names() {
+        // R1-131: BE @NotNull `interestType`/`repaymentPeriod` + @NotBlank
+        // `accountNumber`/`currency` MORAJU biti u JSON-u, inace 400.
+        val adapter = moshi.adapter(LoanApplicationDto::class.java)
+        val json = adapter.toJson(
+            LoanApplicationDto(
+                loanType = "CASH",
+                interestType = "VARIABLE",
+                amount = BigDecimal("100000"),
+                currency = "EUR",
+                repaymentPeriod = 12,
+                accountNumber = "333-ACC"
+            )
+        )
+        assertEquals(true, json.contains("\"interestType\":\"VARIABLE\""))
+        assertEquals(true, json.contains("\"repaymentPeriod\":12"))
+        assertEquals(true, json.contains("\"accountNumber\":\"333-ACC\""))
+        assertEquals(true, json.contains("\"currency\":\"EUR\""))
     }
 
     @Test

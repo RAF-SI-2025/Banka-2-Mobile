@@ -1,6 +1,7 @@
 package rs.raf.banka2.mobile.data.dto.dividend
 
 import com.squareup.moshi.JsonClass
+import java.math.BigDecimal
 
 /**
  * Jedna isplacena dividenda za poziciju u portfoliju — paritet sa FE
@@ -18,15 +19,15 @@ data class DividendPayoutDto(
     val stockTicker: String? = null,
     val quantity: Int? = null,
     /** Cena akcije na dan obracuna. */
-    val priceOnDate: Double? = null,
+    val priceOnDate: BigDecimal? = null,
     /** Kvartalni prinos (godisnji dividendYield / 4). */
     val dividendYieldRate: Double? = null,
     /** Bruto iznos pre poreza. */
-    val grossAmount: Double = 0.0,
+    val grossAmount: BigDecimal = BigDecimal.ZERO,
     /** Iznos poreza po odbitku (0 za EMPLOYEE — vidi taxExempt). */
-    val tax: Double = 0.0,
+    val tax: BigDecimal = BigDecimal.ZERO,
     /** Neto iznos knjizen na racun. */
-    val netAmount: Double = 0.0,
+    val netAmount: BigDecimal = BigDecimal.ZERO,
     val creditedAccountId: Long? = null,
     val currencyCode: String? = null,
     /** ISO datum isplate (YYYY-MM-DD). */

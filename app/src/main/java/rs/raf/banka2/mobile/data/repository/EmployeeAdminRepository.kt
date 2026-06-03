@@ -32,32 +32,4 @@ class EmployeeAdminRepository @Inject constructor(
         safeApiCall { api.update(id, request) }
 
     suspend fun deactivate(id: Long): ApiResult<EmployeeDto> = safeApiCall { api.deactivate(id) }
-
-    suspend fun getPermissions(id: Long): ApiResult<List<String>> =
-        safeApiCall { api.getPermissions(id) }
-
-    /**
-     * ME-13 fix: BE nema PATCH /employees/{id}/permissions endpoint.
-     * Delegira na `update()` sa permissions+active u jednom body-ju (ME-10 atomic).
-     */
-    suspend fun updatePermissions(
-        id: Long,
-        isAgent: Boolean,
-        isSupervisor: Boolean,
-        isAdmin: Boolean? = null,
-        active: Boolean? = null
-    ): ApiResult<EmployeeDto> {
-        val permissions = buildList {
-            if (isAdmin == true) add("ADMIN")
-            if (isSupervisor) add("SUPERVISOR")
-            if (isAgent) add("AGENT")
-        }
-        return update(
-            id = id,
-            request = UpdateEmployeeRequestDto(
-                permissions = permissions,
-                active = active
-            )
-        )
-    }
 }

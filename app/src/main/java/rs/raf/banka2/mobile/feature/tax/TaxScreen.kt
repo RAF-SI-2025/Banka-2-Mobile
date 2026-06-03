@@ -12,7 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Calculate
 import androidx.compose.material.icons.filled.Refresh
@@ -86,7 +86,12 @@ fun TaxScreen(
                 )
             }
             if (state.error != null) item { ErrorBanner(state.error) }
-            items(state.records, key = { it.userId ?: it.email.orEmpty().hashCode().toLong() }) { record ->
+            // R6 deep2c: kompozitni (userId|email)+index key (vs `hashCode().toLong()`
+            // koji je mogao kolidirati za null-userId zapise sa istim/null email-om).
+            itemsIndexed(
+                state.records,
+                key = { index, it -> "tax-${it.userId ?: it.email.orEmpty()}-$index" }
+            ) { _, record ->
                 GlassCard(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -98,16 +103,16 @@ fun TaxScreen(
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         Column {
                             Text("Profit", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Text(MoneyFormatter.format(record.totalGain ?: 0.0, 2), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
+                            Text(MoneyFormatter.format(record.totalGain ?: java.math.BigDecimal.ZERO, 2), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
                         }
                         Column {
                             Text("Gubitak", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Text(MoneyFormatter.format(record.totalLoss ?: 0.0, 2), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
+                            Text(MoneyFormatter.format(record.totalLoss ?: java.math.BigDecimal.ZERO, 2), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
                         }
                         Column(horizontalAlignment = Alignment.End) {
                             Text("Porez", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             Text(
-                                MoneyFormatter.format(record.taxAmount ?: 0.0, 2),
+                                MoneyFormatter.format(record.taxAmount ?: java.math.BigDecimal.ZERO, 2),
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.SemiBold,
                                 color = MaterialTheme.colorScheme.tertiary
@@ -171,7 +176,11 @@ private fun TaxBreakdownDialog(
                         verticalArrangement = Arrangement.spacedBy(6.dp),
                         modifier = Modifier.height(320.dp)
                     ) {
-                        items(items, key = { it.listingId ?: it.ticker.orEmpty().hashCode().toLong() }) { item ->
+                        // R6 deep2c: kompozitni (listingId|ticker)+index key.
+                        itemsIndexed(
+                            items,
+                            key = { index, it -> "breakdown-${it.listingId ?: it.ticker.orEmpty()}-$index" }
+                        ) { _, item ->
                             BreakdownRow(item)
                         }
                     }
@@ -194,19 +203,19 @@ private fun BreakdownRow(item: TaxBreakdownItemDto) {
         Column(modifier = Modifier.padding(end = 8.dp)) {
             Text(item.ticker ?: "—", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
             Text(
-                "Profit native: ${MoneyFormatter.formatWithCurrency(item.profitNative ?: 0.0, item.listingCurrency)}",
+                "Profit native: ${MoneyFormatter.formatWithCurrency(item.profitNative ?: java.math.BigDecimal.ZERO, item.listingCurrency)}",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
         Column(horizontalAlignment = Alignment.End) {
             Text(
-                "${MoneyFormatter.format(item.profitRsd ?: 0.0, 2)} RSD",
+                "${MoneyFormatter.format(item.profitRsd ?: java.math.BigDecimal.ZERO, 2)} RSD",
                 style = MaterialTheme.typography.bodyMedium,
-                color = if ((item.profitRsd ?: 0.0) >= 0) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error
+                color = if ((item.profitRsd ?: java.math.BigDecimal.ZERO) >= java.math.BigDecimal.ZERO) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error
             )
             Text(
-                "Porez: ${MoneyFormatter.format(item.taxOwed ?: 0.0, 2)} RSD",
+                "Porez: ${MoneyFormatter.format(item.taxOwed ?: java.math.BigDecimal.ZERO, 2)} RSD",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.SemiBold

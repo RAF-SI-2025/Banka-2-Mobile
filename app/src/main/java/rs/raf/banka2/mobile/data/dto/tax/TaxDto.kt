@@ -1,19 +1,28 @@
 package rs.raf.banka2.mobile.data.dto.tax
 
+import com.squareup.moshi.Json
 import com.squareup.moshi.JsonClass
+import java.math.BigDecimal
 
+/**
+ * P1-mobile-banking-1 (R1-176): KONTRAKT uskladjen sa BE `TaxRecordDto`
+ * (`rs.raf.trading.tax.dto.TaxRecordDto`). BE salje `userName`/`totalProfit`/
+ * `taxOwed`/`taxPaid` — stari Mobile DTO je citao `name`/`totalGain`/`taxAmount`/
+ * `paidThisYear` → ceo tax portal je bio prazan. Zadrzavamo Kotlin imena (koja
+ * TaxScreen vec cita) ali ih vezujemo za BE JSON imena preko [Json] aliasa.
+ * BE NEMA `totalLoss`/`taxableIncome`/`email` → ta polja ostaju null (UI fallback).
+ */
 @JsonClass(generateAdapter = true)
 data class TaxRecordDto(
     val userId: Long? = null,
-    val name: String? = null,
+    @param:Json(name = "userName") val name: String? = null,
     val email: String? = null,
     val userType: String? = null,
-    val totalGain: Double? = null,
-    val totalLoss: Double? = null,
-    val taxableIncome: Double? = null,
-    val taxAmount: Double? = null,
-    val paidThisYear: Double? = null,
-    val owed: Double? = null,
+    @param:Json(name = "totalProfit") val totalGain: BigDecimal? = null,
+    val totalLoss: BigDecimal? = null,
+    val taxableIncome: BigDecimal? = null,
+    @param:Json(name = "taxOwed") val taxAmount: BigDecimal? = null,
+    @param:Json(name = "taxPaid") val paidThisYear: BigDecimal? = null,
     val currency: String? = null
 )
 
@@ -27,7 +36,7 @@ data class TaxBreakdownItemDto(
     val listingId: Long? = null,
     val ticker: String? = null,
     val listingCurrency: String? = null,
-    val profitNative: Double? = null,
-    val profitRsd: Double? = null,
-    val taxOwed: Double? = null
+    val profitNative: BigDecimal? = null,
+    val profitRsd: BigDecimal? = null,
+    val taxOwed: BigDecimal? = null
 )

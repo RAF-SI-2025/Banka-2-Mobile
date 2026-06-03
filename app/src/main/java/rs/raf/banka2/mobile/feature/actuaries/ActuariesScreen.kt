@@ -122,11 +122,11 @@ fun ActuariesScreen(
 private fun EditLimitDialog(
     agent: ActuaryDto,
     onDismiss: () -> Unit,
-    onConfirm: (Double, Boolean) -> Unit
+    onConfirm: (java.math.BigDecimal, Boolean) -> Unit
 ) {
     var limitText by remember { mutableStateOf(agent.dailyLimit?.let { MoneyFormatter.format(it) }.orEmpty()) }
     var needApproval by remember { mutableStateOf(agent.needApproval ?: false) }
-    val parsed = MoneyFormatter.parse(limitText)
+    val parsed = MoneyFormatter.parseBigDecimal(limitText)
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Limit aktuara") },

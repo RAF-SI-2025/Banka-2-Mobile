@@ -145,27 +145,35 @@ class AuthRepository @Inject constructor(
                         canTradeStocks = true // zaposleni uvek mogu da trguju
                     )
                 }
-                is ApiResult.Failure -> return empResult
+                // R1-583: NE rusi ceo login ako `/employees` privremeno padne
+                // (network/5xx). JWT je vec izdat i nosi rolu (ADMIN/EMPLOYEE) —
+                // to je autoritativno za pristup. Gradimo degradiran profil bez
+                // permisija (UI ce ih ponovo dohvatiti pri sledecem osvezavanju)
+                // umesto da korisnika izbacimo na login posle uspesne auth.
+                is ApiResult.Failure -> ResolvedProfile()
                 is ApiResult.Loading -> ResolvedProfile()
             }
         } else {
-            // CLIENT — fetchuj kompletan client zapis radi canTradeStocks i naseg ime/prezime.
-            when (val clientResult = safeApiCall { clientApi.list(email = email, limit = 5) }) {
+            // CLIENT — P1-fe-mobile-authz-1 (264): koristi `/clients/me` self-lookup.
+            // RANIJE `GET /clients?email=` → 403 za klijenta (rezervisano za
+            // ADMIN/EMPLOYEE) pa fail-OPEN `canTradeStocks=true` + `id=0`. `/me`
+            // razresava pravog ulogovanog klijenta (id + canTradeStocks).
+            when (val clientResult = safeApiCall { clientApi.me() }) {
                 is ApiResult.Success -> {
-                    val match = clientResult.data.content.firstOrNull { it.email.equals(email, ignoreCase = true) }
-                        ?: clientResult.data.content.firstOrNull()
+                    val match = clientResult.data
                     ResolvedProfile(
-                        firstName = match?.firstName.orEmpty(),
-                        lastName = match?.lastName.orEmpty(),
+                        firstName = match.firstName.orEmpty(),
+                        lastName = match.lastName.orEmpty(),
                         permissions = emptySet(),
-                        id = match?.id ?: 0L,
+                        id = match.id,
                         // BE polje moze biti null kod legacy seed-a — default true
-                        canTradeStocks = match?.canTradeStocks ?: true
+                        canTradeStocks = match.canTradeStocks ?: true
                     )
                 }
-                // Best-effort: ako BE nema /clients lookup (403/404), nastavi sa defaults.
-                is ApiResult.Failure -> ResolvedProfile(canTradeStocks = true)
-                is ApiResult.Loading -> ResolvedProfile()
+                // P1-fe-mobile-authz-1 (264/1753): FAIL-CLOSED. Ako self-lookup padne
+                // ne dodeljujemo trade pristup (ranije `canTradeStocks=true` ALLOW).
+                is ApiResult.Failure -> ResolvedProfile(canTradeStocks = false)
+                is ApiResult.Loading -> ResolvedProfile(canTradeStocks = false)
             }
         }
 

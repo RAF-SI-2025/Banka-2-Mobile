@@ -6,28 +6,36 @@ import org.junit.Test
 
 /**
  * TODO_final C2 #4 — NotificationType mapa + normalizacija test.
+ *
+ * P1-mobile-banking-1 (R1-151): vrednosti uskladjene 1:1 sa BE NotificationType enum-om
+ * (`PAYMENT`/`ORDER_*`/`OTC_*`/`LOAN_*`/`CARD_*`/... — NE izmisljena imena). Fallback je
+ * `GENERAL` (BE ime), ne vise `GENERIC`. Quick Approve deep-link special-case je uklonjen
+ * (BE nema `PAYMENT_PENDING_APPROVAL` tip).
  */
 class NotificationTypeTest {
 
     @Test
     fun normalize_knownValue_passesThrough() {
-        assertEquals(NotificationType.PAYMENT_RECEIVED, NotificationType.normalize("PAYMENT_RECEIVED"))
+        assertEquals(NotificationType.PAYMENT, NotificationType.normalize("PAYMENT"))
         assertEquals(NotificationType.ORDER_EXECUTED, NotificationType.normalize("ORDER_EXECUTED"))
     }
 
     @Test
-    fun normalize_unknownValue_returnsGeneric() {
-        assertEquals(NotificationType.GENERIC, NotificationType.normalize("SOMETHING_NEW"))
+    fun normalize_unknownValue_returnsGeneral() {
+        assertEquals(NotificationType.GENERAL, NotificationType.normalize("SOMETHING_NEW"))
+        // Izmisljena imena koja su nekad bila u Mobile spisku, a NEMA ih u BE enum-u.
+        assertEquals(NotificationType.GENERAL, NotificationType.normalize("PAYMENT_RECEIVED"))
+        assertEquals(NotificationType.GENERAL, NotificationType.normalize("ORDER_FILLED"))
     }
 
     @Test
-    fun normalize_null_returnsGeneric() {
-        assertEquals(NotificationType.GENERIC, NotificationType.normalize(null))
+    fun normalize_null_returnsGeneral() {
+        assertEquals(NotificationType.GENERAL, NotificationType.normalize(null))
     }
 
     @Test
     fun labelOf_knownType_returnsSerbian() {
-        assertEquals("Primljeno placanje", NotificationType.labelOf("PAYMENT_RECEIVED"))
+        assertEquals("Placanje", NotificationType.labelOf("PAYMENT"))
         assertEquals("Order izvrsen", NotificationType.labelOf("ORDER_EXECUTED"))
         assertEquals("Cenovni alarm aktiviran", NotificationType.labelOf("PRICE_ALERT_TRIGGERED"))
     }
@@ -44,10 +52,8 @@ class NotificationTypeTest {
 
     @Test
     fun allLabelsCovered() {
-        // Svaka const vrednost u NotificationType (sem UNKNOWN sentinel-a) mora
-        // imati labelu u LABEL_SR.
-        val sentinels = setOf(NotificationType.UNKNOWN)
-        for (type in NotificationType.ALL - sentinels) {
+        // Svaka const vrednost u NotificationType.ALL mora imati labelu u LABEL_SR.
+        for (type in NotificationType.ALL) {
             assertTrue(
                 "Tip $type bez SR labele",
                 NotificationType.LABEL_SR.containsKey(type)
@@ -58,29 +64,8 @@ class NotificationTypeTest {
     // ─── DeepLink resolver ────────────────────────────────────────────────
 
     @Test
-    fun deepLink_paymentPendingApproval_resolvesToQuickApprove() {
-        val n = NotificationDto(
-            id = 99L,
-            type = "PAYMENT_PENDING_APPROVAL",
-            title = "Placanje ceka odobrenje",
-            message = "100 USD ka 222...",
-            read = false,
-            createdAt = "2026-05-26T10:00:00Z",
-            relatedEntityType = "PAYMENT",
-            relatedEntityId = 555L,
-        )
-        val result = rs.raf.banka2.mobile.feature.notifications.NotificationDeepLink.resolve(n)
-        assertTrue(
-            "Expected QuickApprovePayment, got=$result",
-            result is rs.raf.banka2.mobile.feature.notifications.NotificationTarget.QuickApprovePayment
-        )
-        result as rs.raf.banka2.mobile.feature.notifications.NotificationTarget.QuickApprovePayment
-        assertEquals(555L, result.paymentId)
-    }
-
-    @Test
     fun deepLink_paymentEntity_resolvesToPayments() {
-        val n = sampleNotification(type = "PAYMENT_RECEIVED", entity = "PAYMENT", id = 7L)
+        val n = sampleNotification(type = "PAYMENT", entity = "PAYMENT", id = 7L)
         val result = rs.raf.banka2.mobile.feature.notifications.NotificationDeepLink.resolve(n)
         assertEquals(
             rs.raf.banka2.mobile.feature.notifications.NotificationTarget.Payments,
@@ -99,7 +84,7 @@ class NotificationTypeTest {
 
     @Test
     fun deepLink_otcOffer_resolvesToOtc() {
-        val n = sampleNotification(type = "OTC_OFFER_RECEIVED", entity = "OTC_OFFER", id = 3L)
+        val n = sampleNotification(type = "OTC_COUNTER_OFFER", entity = "OTC_OFFER", id = 3L)
         assertEquals(
             rs.raf.banka2.mobile.feature.notifications.NotificationTarget.Otc,
             rs.raf.banka2.mobile.feature.notifications.NotificationDeepLink.resolve(n)
@@ -108,7 +93,7 @@ class NotificationTypeTest {
 
     @Test
     fun deepLink_fundEntityWithId_resolvesToFundDetail() {
-        val n = sampleNotification(type = "FUND_INTEREST_PAID", entity = "FUND", id = 42L)
+        val n = sampleNotification(type = "GENERAL", entity = "FUND", id = 42L)
         val result = rs.raf.banka2.mobile.feature.notifications.NotificationDeepLink.resolve(n)
         assertEquals(
             rs.raf.banka2.mobile.feature.notifications.NotificationTarget.Fund(42L),
@@ -118,9 +103,38 @@ class NotificationTypeTest {
 
     @Test
     fun deepLink_fundEntityNullId_resolvesToFundsList() {
-        val n = sampleNotification(type = "FUND_INTEREST_PAID", entity = "FUND", id = null)
+        val n = sampleNotification(type = "GENERAL", entity = "FUND", id = null)
         assertEquals(
             rs.raf.banka2.mobile.feature.notifications.NotificationTarget.Funds,
+            rs.raf.banka2.mobile.feature.notifications.NotificationDeepLink.resolve(n)
+        )
+    }
+
+    @Test
+    fun deepLink_recurringOrderEntity_resolvesToRecurringOrders() {
+        // R1 689: BE emituje referenceType=RECURRING_ORDER (RecurringOrderScheduler).
+        val n = sampleNotification(type = "RECURRING_ORDER_SKIPPED", entity = "RECURRING_ORDER", id = 9L)
+        assertEquals(
+            rs.raf.banka2.mobile.feature.notifications.NotificationTarget.RecurringOrders,
+            rs.raf.banka2.mobile.feature.notifications.NotificationDeepLink.resolve(n)
+        )
+    }
+
+    @Test
+    fun deepLink_priceAlertEntity_resolvesToPriceAlerts() {
+        // R1 689: BE emituje referenceType=PRICE_ALERT (PriceAlertService).
+        val n = sampleNotification(type = "PRICE_ALERT_TRIGGERED", entity = "PRICE_ALERT", id = 5L)
+        assertEquals(
+            rs.raf.banka2.mobile.feature.notifications.NotificationTarget.PriceAlerts,
+            rs.raf.banka2.mobile.feature.notifications.NotificationDeepLink.resolve(n)
+        )
+    }
+
+    @Test
+    fun deepLink_loanRequestEntity_resolvesToLoans() {
+        val n = sampleNotification(type = "LOAN_CREATED", entity = "LOAN_REQUEST", id = 2L)
+        assertEquals(
+            rs.raf.banka2.mobile.feature.notifications.NotificationTarget.Loans,
             rs.raf.banka2.mobile.feature.notifications.NotificationDeepLink.resolve(n)
         )
     }

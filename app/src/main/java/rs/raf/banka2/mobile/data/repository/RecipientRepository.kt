@@ -17,11 +17,11 @@ class RecipientRepository @Inject constructor(
     suspend fun list(): ApiResult<List<RecipientDto>> =
         safeApiCall { api.list() }.map { it.content }
 
-    suspend fun create(name: String, accountNumber: String, description: String?): ApiResult<RecipientDto> =
-        safeApiCall { api.create(CreateRecipientDto(name, accountNumber, description)) }
+    suspend fun create(name: String, accountNumber: String): ApiResult<RecipientDto> =
+        safeApiCall { api.create(CreateRecipientDto(name, accountNumber)) }
 
-    suspend fun update(id: Long, name: String, accountNumber: String, description: String?): ApiResult<RecipientDto> =
-        safeApiCall { api.update(id, UpdateRecipientDto(name, accountNumber, description)) }
+    suspend fun update(id: Long, name: String, accountNumber: String): ApiResult<RecipientDto> =
+        safeApiCall { api.update(id, UpdateRecipientDto(name, accountNumber)) }
 
     suspend fun delete(id: Long): ApiResult<Unit> = safeApiCall { api.delete(id) }.map { }
 }

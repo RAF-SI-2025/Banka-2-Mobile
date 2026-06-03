@@ -11,6 +11,13 @@ interface ExchangeApi {
     @GET("exchange-rates")
     suspend fun getExchangeRates(): Response<List<ExchangeRateDto>>
 
+    /**
+     * R1 864: `amount` je `Double` NAMERNO — ovaj endpoint je SAMO za UI procenu
+     * konverzije (prikaz "dobijate ~X"), a ne za stvarno izvrsenje. Pravi
+     * transfer/placanje ide preko `TransferApi`/`PaymentApi` sa `BigDecimal`
+     * iznosom (precision-safe, spec C2 §255). Double ovde je dovoljan za
+     * prikaznu procenu i izbegava query-string parsiranje BigDecimal-a na BE-u.
+     */
     @GET("exchange/calculate")
     suspend fun calculate(
         @Query("amount") amount: Double,

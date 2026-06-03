@@ -5,68 +5,90 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import rs.raf.banka2.mobile.data.dto.pricealert.PriceAlertCondition
 import java.math.BigDecimal
 
 /**
  * Unit testovi za pure PriceAlertDialogViewModel validacionu logiku.
  *
- * `validate(threshold, currentPrice)` vraca user-facing poruku ako threshold
- * nije validan, inace null. `percentDifference()` vraca procenat razlike
+ * `validate(threshold, currentPrice, condition)` vraca user-facing poruku ako
+ * threshold nije validan, inace null. `percentDifference()` vraca procenat razlike
  * threshold-a od trenutne cene.
  */
 class PriceAlertDialogValidationTest {
+
+    private val ABOVE = PriceAlertCondition.ABOVE
+    private val BELOW = PriceAlertCondition.BELOW
 
     // ─── validate() ───────────────────────────────────────────
 
     @Test
     fun validate_nullThreshold_returnsError() {
-        val result = PriceAlertDialogViewModel.validate(threshold = null, currentPrice = 100.0)
+        val result = PriceAlertDialogViewModel.validate(threshold = null, currentPrice = 100.0, condition = ABOVE)
         assertNotNull(result)
         assertTrue(result!!.contains("pozitivan"))
     }
 
     @Test
     fun validate_zeroThreshold_returnsError() {
-        val result = PriceAlertDialogViewModel.validate(BigDecimal.ZERO, 100.0)
+        val result = PriceAlertDialogViewModel.validate(BigDecimal.ZERO, 100.0, ABOVE)
         assertNotNull(result)
     }
 
     @Test
     fun validate_negativeThreshold_returnsError() {
-        val result = PriceAlertDialogViewModel.validate(BigDecimal("-5"), 100.0)
+        val result = PriceAlertDialogViewModel.validate(BigDecimal("-5"), 100.0, ABOVE)
         assertNotNull(result)
     }
 
     @Test
     fun validate_thresholdEqualsCurrentPrice_returnsError() {
         // Alarm bi se okinuo odmah na sledecem scheduler tick-u
-        val result = PriceAlertDialogViewModel.validate(BigDecimal("100.00"), 100.0)
+        val result = PriceAlertDialogViewModel.validate(BigDecimal("100.00"), 100.0, ABOVE)
         assertNotNull(result)
         assertTrue(result!!.contains("razlicit"))
     }
 
     @Test
-    fun validate_thresholdAboveCurrentPrice_returnsNull() {
-        val result = PriceAlertDialogViewModel.validate(BigDecimal("150.00"), 100.0)
+    fun validate_above_thresholdAboveCurrentPrice_returnsNull() {
+        val result = PriceAlertDialogViewModel.validate(BigDecimal("150.00"), 100.0, ABOVE)
         assertNull(result)
     }
 
     @Test
-    fun validate_thresholdBelowCurrentPrice_returnsNull() {
-        val result = PriceAlertDialogViewModel.validate(BigDecimal("50.00"), 100.0)
+    fun validate_below_thresholdBelowCurrentPrice_returnsNull() {
+        val result = PriceAlertDialogViewModel.validate(BigDecimal("50.00"), 100.0, BELOW)
         assertNull(result)
     }
 
+    // ─── R1-598: SMER mora biti konzistentan sa pragom ───
+
     @Test
-    fun validate_currentPriceNull_skipsEqualityCheck() {
+    fun validate_above_thresholdBelowCurrentPrice_returnsError() {
+        // ABOVE alarm sa pragom ISPOD cene → bi se okinuo odmah → mora biti greska.
+        val result = PriceAlertDialogViewModel.validate(BigDecimal("50.00"), 100.0, ABOVE)
+        assertNotNull(result)
+        assertTrue(result!!.contains("iznad"))
+    }
+
+    @Test
+    fun validate_below_thresholdAboveCurrentPrice_returnsError() {
+        // BELOW alarm sa pragom IZNAD cene → bi se okinuo odmah → mora biti greska.
+        val result = PriceAlertDialogViewModel.validate(BigDecimal("150.00"), 100.0, BELOW)
+        assertNotNull(result)
+        assertTrue(result!!.contains("ispod"))
+    }
+
+    @Test
+    fun validate_currentPriceNull_skipsDirectionCheck() {
         // Kad listing nema cenu (FOREX edge case), prihvatamo bilo koji pozitivan prag.
-        val result = PriceAlertDialogViewModel.validate(BigDecimal("100.00"), null)
+        val result = PriceAlertDialogViewModel.validate(BigDecimal("100.00"), null, ABOVE)
         assertNull(result)
     }
 
     @Test
-    fun validate_currentPriceZero_skipsEqualityCheck() {
-        val result = PriceAlertDialogViewModel.validate(BigDecimal("100.00"), 0.0)
+    fun validate_currentPriceZero_skipsDirectionCheck() {
+        val result = PriceAlertDialogViewModel.validate(BigDecimal("100.00"), 0.0, BELOW)
         assertNull(result)
     }
 

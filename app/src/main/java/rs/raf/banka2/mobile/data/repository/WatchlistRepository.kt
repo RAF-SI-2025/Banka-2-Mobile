@@ -3,6 +3,7 @@ package rs.raf.banka2.mobile.data.repository
 import rs.raf.banka2.mobile.core.network.ApiResult
 import rs.raf.banka2.mobile.core.network.safeApiCall
 import rs.raf.banka2.mobile.data.api.WatchlistApi
+import rs.raf.banka2.mobile.data.dto.watchlist.AddWatchlistItemRequest
 import rs.raf.banka2.mobile.data.dto.watchlist.CreateWatchlistRequest
 import rs.raf.banka2.mobile.data.dto.watchlist.WatchlistDto
 import rs.raf.banka2.mobile.data.dto.watchlist.WatchlistFilterType
@@ -38,7 +39,7 @@ class WatchlistRepository @Inject constructor(
         safeApiCall { api.listItems(watchlistId, filter.apiValue) }
 
     suspend fun addItem(watchlistId: Long, listingId: Long): ApiResult<WatchlistItemDto> =
-        safeApiCall { api.addItem(watchlistId, listingId) }
+        safeApiCall { api.addItem(watchlistId, AddWatchlistItemRequest(listingId)) }
 
     suspend fun removeItem(watchlistId: Long, listingId: Long): ApiResult<Unit> =
         safeApiCall { api.removeItem(watchlistId, listingId) }

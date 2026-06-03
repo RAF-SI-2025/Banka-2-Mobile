@@ -31,6 +31,15 @@ interface ClientApi {
         @Query("search") search: String? = null
     ): Response<PageResponse<ClientDto>>
 
+    /**
+     * P1-fe-mobile-authz-1 (264): self-lookup za CLIENT login flow. CLIENT NEMA
+     * pravo na `GET /clients?email=` (rezervisano za ADMIN/EMPLOYEE) → 403, pa je
+     * AuthRepository ranije padao na `canTradeStocks=true` (fail-OPEN) + `id=0`.
+     * `/clients/me` razresava pravi profil ulogovanog klijenta (id + canTradeStocks).
+     */
+    @GET("clients/me")
+    suspend fun me(): Response<ClientDto>
+
     @GET("clients/{id}")
     suspend fun byId(@Path("id") id: Long): Response<ClientDto>
 

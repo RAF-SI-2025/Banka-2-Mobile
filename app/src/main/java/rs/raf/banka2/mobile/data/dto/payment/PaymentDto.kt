@@ -66,10 +66,12 @@ data class OtpVerifyRequest(
     val code: String
 )
 
+/**
+ * Request body za `POST /payments/{id}/approve` (TODO_final Mobile bonus #7,
+ * Quick Approve). Matchuje BE `ApprovePaymentRequest { otpCode }` — TOTP iz
+ * Google Authenticator-a, tacno 6 cifara (BE validira `\d{6}`).
+ */
 @JsonClass(generateAdapter = true)
-data class OtpVerifyResponse(
-    val verified: Boolean = false,
-    val blocked: Boolean = false,
-    val message: String? = null,
-    val attempts: Int? = null
+data class ApprovePaymentRequest(
+    val otpCode: String
 )

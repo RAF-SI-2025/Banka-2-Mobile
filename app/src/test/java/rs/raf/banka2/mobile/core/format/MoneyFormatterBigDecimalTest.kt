@@ -61,8 +61,50 @@ class MoneyFormatterBigDecimalTest {
     @Test
     fun parseBigDecimal_handlesPlainNumber() {
         assertEquals(BigDecimal("100"), MoneyFormatter.parseBigDecimal("100"))
-        // 100.50 - sr-RS koristi tacku kao hiljaditi separator, pa "100.50" parsira kao "10050"
-        // (postojeci behavior parse-a). Za decimale koristi se zarez.
         assertEquals(BigDecimal("100.50"), MoneyFormatter.parseBigDecimal("100,50"))
+    }
+
+    // ─── R7-2033 / R1-581 [money]: locale-svestan parser ───────────────────
+
+    @Test
+    fun parseBigDecimal_srRsThousandsAndComma_parsesExactly() {
+        // "1.234,56" → 1234.56 (NE 0, NE 1234560)
+        assertEquals(BigDecimal("1234.56"), MoneyFormatter.parseBigDecimal("1.234,56"))
+    }
+
+    @Test
+    fun parseBigDecimal_enDotDecimal_notStrippedTo100x() {
+        // R7-2033: ranije je "1234.56" gubilo tacku → "123456" (100× preveliko).
+        // Sada tacka sa 2 cifre posle = decimalni separator.
+        assertEquals(BigDecimal("1234.56"), MoneyFormatter.parseBigDecimal("1234.56"))
+    }
+
+    @Test
+    fun parseBigDecimal_enThousandsCommaDotDecimal_parsesExactly() {
+        // "1,234.56" (EN sa hiljadama) → 1234.56
+        assertEquals(BigDecimal("1234.56"), MoneyFormatter.parseBigDecimal("1,234.56"))
+    }
+
+    @Test
+    fun parseBigDecimal_srRsThousandsDotOnly_treatedAsGrouping() {
+        // "1.000" (sr-RS hiljade) → 1000, NE 1.0
+        assertEquals(BigDecimal("1000"), MoneyFormatter.parseBigDecimal("1.000"))
+        assertEquals(BigDecimal("250000"), MoneyFormatter.parseBigDecimal("250.000"))
+    }
+
+    @Test
+    fun parseBigDecimal_largeAmount_noPrecisionLoss() {
+        // Veliki iznos koji bi Double zaokruzio — BigDecimal mora ostati egzaktan.
+        assertEquals(BigDecimal("12345678.99"), MoneyFormatter.parseBigDecimal("12.345.678,99"))
+    }
+
+    // ─── R1-581 [money]: format(BigDecimal) bez toDouble() preciznost ──────
+
+    @Test
+    fun format_bigDecimal_largeValue_noDoublePrecisionLoss() {
+        // 9_999_999_999_999.99 ima 15 znacajnih cifara — Double bi izgubio
+        // poslednju decimalu; DecimalFormat nad BigDecimal je egzaktan.
+        val bd = BigDecimal("9999999999999.99")
+        assertEquals("9.999.999.999.999,99", MoneyFormatter.format(bd))
     }
 }

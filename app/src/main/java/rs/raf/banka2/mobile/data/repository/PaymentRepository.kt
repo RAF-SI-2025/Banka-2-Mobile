@@ -4,10 +4,9 @@ import rs.raf.banka2.mobile.core.network.ApiResult
 import rs.raf.banka2.mobile.core.network.map
 import rs.raf.banka2.mobile.core.network.safeApiCall
 import rs.raf.banka2.mobile.data.api.PaymentApi
+import rs.raf.banka2.mobile.data.dto.payment.ApprovePaymentRequest
 import rs.raf.banka2.mobile.data.dto.payment.CreatePaymentRequestDto
 import rs.raf.banka2.mobile.data.dto.payment.OtpResponseDto
-import rs.raf.banka2.mobile.data.dto.payment.OtpVerifyRequest
-import rs.raf.banka2.mobile.data.dto.payment.OtpVerifyResponse
 import rs.raf.banka2.mobile.data.dto.payment.PaymentListItemDto
 import rs.raf.banka2.mobile.data.dto.payment.PaymentResponseDto
 import javax.inject.Inject
@@ -33,14 +32,15 @@ class PaymentRepository @Inject constructor(
     suspend fun getPaymentById(id: Long): ApiResult<PaymentResponseDto> =
         safeApiCall { api.getPaymentById(id) }
 
+    /** Quick Approve (TODO_final #7): POST /payments/{id}/approve sa 6-cifrenim OTP-om. */
+    suspend fun approveQuick(id: Long, otpCode: String): ApiResult<PaymentResponseDto> =
+        safeApiCall { api.approve(id, ApprovePaymentRequest(otpCode)) }
+
     suspend fun requestOtpToMobile(): ApiResult<Unit> = mapToUnit(safeApiCall { api.requestOtp() })
 
     suspend fun requestOtpViaEmail(): ApiResult<Unit> = mapToUnit(safeApiCall { api.requestOtpViaEmail() })
 
     suspend fun getActiveOtp(): ApiResult<OtpResponseDto> = safeApiCall { api.getActiveOtp() }
-
-    suspend fun verifyOtp(code: String): ApiResult<OtpVerifyResponse> =
-        safeApiCall { api.verifyOtp(OtpVerifyRequest(code)) }
 
     suspend fun downloadReceipt(id: Long): ApiResult<okhttp3.ResponseBody> =
         safeApiCall { api.downloadReceipt(id) }

@@ -17,7 +17,7 @@ class RecurringOrderFormValidationTest {
 
     private val listing = ListingDto(
         id = 1L, ticker = "AAPL", name = "Apple Inc.", listingType = "STOCK",
-        currency = "USD", price = 180.0,
+        currency = "USD", price = BigDecimal("180.0"),
     )
 
     @Test

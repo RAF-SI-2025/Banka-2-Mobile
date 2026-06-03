@@ -97,9 +97,9 @@ fun MyFundsScreen(
                             }
                             position.profit?.let {
                                 Text(
-                                    "${if (it >= 0) "+" else ""}${MoneyFormatter.format(it, 2)}",
+                                    "${if (it >= java.math.BigDecimal.ZERO) "+" else ""}${MoneyFormatter.format(it, 2)}",
                                     style = MaterialTheme.typography.labelMedium,
-                                    color = if (it >= 0) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error
+                                    color = if (it >= java.math.BigDecimal.ZERO) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error
                                 )
                             }
                         }

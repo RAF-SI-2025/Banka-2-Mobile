@@ -17,8 +17,8 @@ android {
         applicationId = "rs.raf.banka2.mobile"
         minSdk = 24
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "1.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -26,6 +26,10 @@ android {
         // Debug buildType nasledjuje ovo (lokalni dev preko emulator-a + docker compose).
         // Release buildType override-uje na K8s production URL — vidi buildTypes.release.
         buildConfigField("String", "API_BASE_URL", "\"http://10.0.2.2:8080/\"")
+        // R1-586: routing prefix nase banke (Banka 2). Bilo hardkodirano "222" u
+        // NewPaymentViewModel-u; sada je build-config vrednost (lakse za env override
+        // i konzistentno sa BE `BANK_CODE`/`my-routing-number`).
+        buildConfigField("String", "BANK_ROUTING_PREFIX", "\"222\"")
     }
 
     buildTypes {
@@ -173,6 +177,9 @@ dependencies {
     testImplementation(libs.turbine)
     testImplementation(libs.mockk)
     testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.retrofit.core)
+    testImplementation(libs.retrofit.converter.moshi)
+    testImplementation(libs.okhttp.mockwebserver)
 
     // Test (instrumented)
     androidTestImplementation(libs.androidx.junit)

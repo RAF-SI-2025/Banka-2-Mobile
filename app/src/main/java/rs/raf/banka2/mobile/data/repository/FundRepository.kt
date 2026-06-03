@@ -13,6 +13,7 @@ import rs.raf.banka2.mobile.data.dto.fund.FundTransactionDto
 import rs.raf.banka2.mobile.data.dto.fund.FundWithdrawDto
 import rs.raf.banka2.mobile.data.dto.fund.ReassignFundManagerDto
 import rs.raf.banka2.mobile.data.dto.fundstatistics.FundStatisticsDto
+import java.math.BigDecimal
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -35,23 +36,31 @@ class FundRepository @Inject constructor(
     suspend fun transactions(id: Long): ApiResult<List<FundTransactionDto>> =
         safeApiCall { api.transactions(id) }
 
-    suspend fun create(name: String, description: String?, minimumContribution: Double): ApiResult<FundDetailDto> =
+    suspend fun create(name: String, description: String?, minimumContribution: BigDecimal): ApiResult<FundDetailDto> =
         safeApiCall { api.create(CreateFundDto(name, description, minimumContribution)) }
 
-    suspend fun invest(fundId: Long, sourceAccountId: Long, amount: Double): ApiResult<FundPositionDto> =
-        safeApiCall { api.invest(fundId, FundInvestDto(sourceAccountId, amount)) }
+    suspend fun invest(
+        fundId: Long,
+        sourceAccountId: Long,
+        amount: BigDecimal,
+        currency: String = "RSD"
+    ): ApiResult<FundPositionDto> =
+        safeApiCall { api.invest(fundId, FundInvestDto(sourceAccountId, amount, currency)) }
 
     suspend fun withdraw(
         fundId: Long,
         destinationAccountId: Long,
-        amount: Double?,
+        amount: BigDecimal?,
         withdrawAll: Boolean
-    ): ApiResult<FundTransactionDto> =
-        safeApiCall { api.withdraw(fundId, FundWithdrawDto(destinationAccountId, amount, withdrawAll)) }
+    ): ApiResult<FundTransactionDto> {
+        // R1 1054: BE cita `amount == null` kao "povuci celu poziciju" — checkbox
+        // "Povuci celu poziciju" mapiramo na null iznos umesto da saljemo mrtvo
+        // `withdrawAll` polje koje BE ignorise.
+        val wireAmount = if (withdrawAll) null else amount
+        return safeApiCall { api.withdraw(fundId, FundWithdrawDto(destinationAccountId, wireAmount)) }
+    }
 
     suspend fun myPositions(): ApiResult<List<FundPositionDto>> = safeApiCall { api.myPositions() }
-
-    suspend fun bankPositions(): ApiResult<List<FundPositionDto>> = safeApiCall { api.bankPositions() }
 
     suspend fun reassignManager(fundId: Long, newManagerEmployeeId: Long): ApiResult<FundDetailDto> =
         safeApiCall { api.reassignManager(fundId, ReassignFundManagerDto(newManagerEmployeeId)) }

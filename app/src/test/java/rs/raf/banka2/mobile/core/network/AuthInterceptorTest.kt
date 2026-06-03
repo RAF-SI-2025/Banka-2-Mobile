@@ -125,4 +125,52 @@ class AuthInterceptorTest {
         val request = proceededRequest(buildChain("/accounts/my"), interceptor)
         assertNull(request.header("Authorization"))
     }
+
+    // P1-fe-mobile-authz-1 (265): RELEASE base URL je `.../api/` → encodedPath
+    // je `/api/auth/login`. Exact-match na `/auth/login` je promasivao pa se na
+    // login/refresh kacio stale Bearer. Suffix-match mora da pokrije i ovo.
+
+    @Test
+    fun bypass_apiPrefixedLoginPath_doesNotAttachBearer() {
+        coEvery { store.accessToken() } returns "TOKEN"
+        val interceptor = AuthInterceptor(store)
+        val request = proceededRequest(buildChain("/api/auth/login"), interceptor)
+        assertNull(request.header("Authorization"))
+    }
+
+    @Test
+    fun bypass_apiPrefixedRefreshPath_doesNotAttachBearer() {
+        coEvery { store.accessToken() } returns "TOKEN"
+        val interceptor = AuthInterceptor(store)
+        val request = proceededRequest(buildChain("/api/auth/refresh"), interceptor)
+        assertNull(request.header("Authorization"))
+    }
+
+    @Test
+    fun bypass_apiPrefixedActivate_doesNotAttachBearer() {
+        coEvery { store.accessToken() } returns "TOKEN"
+        val interceptor = AuthInterceptor(store)
+        val request = proceededRequest(buildChain("/api/auth-employee/activate"), interceptor)
+        assertNull(request.header("Authorization"))
+    }
+
+    @Test
+    fun apiPrefixedLogout_stillAttachesBearer() {
+        // /api/auth/logout NIJE u bypass listi (nema endsWith match) → mora Bearer.
+        coEvery { store.accessToken() } returns "LOGOUT_42"
+        val interceptor = AuthInterceptor(store)
+        val request = proceededRequest(buildChain("/api/auth/logout"), interceptor)
+        assertEquals("Bearer LOGOUT_42", request.header("Authorization"))
+    }
+
+    @Test
+    fun bypass_apiPrefixedActivationTokenStatus_doesNotAttachBearer() {
+        coEvery { store.accessToken() } returns "TOKEN"
+        val interceptor = AuthInterceptor(store)
+        val request = proceededRequest(
+            buildChain("/api/auth-employee/activation-token/abc-uuid-1234/status"),
+            interceptor
+        )
+        assertNull(request.header("Authorization"))
+    }
 }

@@ -14,6 +14,7 @@ import kotlinx.coroutines.launch
 import rs.raf.banka2.mobile.core.auth.SessionManager
 import rs.raf.banka2.mobile.core.auth.SessionState
 import rs.raf.banka2.mobile.core.auth.UserRole
+import rs.raf.banka2.mobile.core.format.MoneyFormatter
 import rs.raf.banka2.mobile.core.network.ApiResult
 import rs.raf.banka2.mobile.data.dto.account.AccountDto
 import rs.raf.banka2.mobile.data.dto.fund.FundSummaryDto
@@ -62,7 +63,11 @@ class CreateOrderViewModel @Inject constructor(
                 val profile = (session as? SessionState.LoggedIn)?.profile
                 val role = profile?.role ?: UserRole.Unknown
                 // ME-04: za CLIENT-a sa canTradeStocks=false UI je gated.
-                val canTrade = profile?.canAccessTrading ?: true
+                // P1-fe-mobile-authz-1 (1753): FAIL-CLOSED kad profila nema
+                // (process death, SessionManager je in-memory pa se sesija ne
+                // restoruje pri deep-link/restored navigaciji). Ranije `?: true`
+                // (ALLOW) → klijent bez TRADE_STOCKS bi dobio pun trade UI.
+                val canTrade = profile?.canAccessTrading ?: false
                 _state.update {
                     it.copy(
                         isEmployee = role.isEmployee,
@@ -86,9 +91,17 @@ class CreateOrderViewModel @Inject constructor(
     fun setLimitPrice(value: String) = _state.update { it.copy(limitPrice = value, error = null) }
     fun setStopPrice(value: String) = _state.update { it.copy(stopPrice = value, error = null) }
     fun setAllOrNone(value: Boolean) = _state.update { it.copy(allOrNone = value) }
-    fun selectAccount(account: AccountDto) = _state.update { it.copy(selectedAccount = account) }
+    // R2-1491: izbor racuna i fonda su MEDJUSOBNO ISKLJUCIVI (supervizor kupuje u
+    // ime banke ILI u ime fonda). Selektovanje jednog ponisti drugi.
+    fun selectAccount(account: AccountDto) = _state.update {
+        it.copy(selectedAccount = account, selectedFund = null, onBehalfOfFundId = "")
+    }
     fun selectFund(fund: FundSummaryDto?) = _state.update {
-        it.copy(selectedFund = fund, onBehalfOfFundId = fund?.id?.toString().orEmpty())
+        it.copy(
+            selectedFund = fund,
+            onBehalfOfFundId = fund?.id?.toString().orEmpty(),
+            selectedAccount = if (fund != null) null else it.selectedAccount
+        )
     }
     fun setUseMargin(value: Boolean) = _state.update { it.copy(useMargin = value) }
 
@@ -112,9 +125,19 @@ class CreateOrderViewModel @Inject constructor(
     fun openVerification() {
         val current = _state.value
         val qty = current.quantity.toIntOrNull()
+        // R2-1491: supervizor kupuje u ime banke (account) ILI u ime fonda (fund),
+        // ali NE i jedno i drugo, i NE nijedno. Klijent uvek mora dati racun.
+        val supervisorBoth = current.canPickFund &&
+            current.selectedFund != null && current.selectedAccount != null
+        val supervisorNeither = current.canPickFund &&
+            current.selectedFund == null && current.selectedAccount == null
         when {
             current.listing == null -> _state.update { it.copy(error = "Hartija nije ucitana.") }
             qty == null || qty <= 0 -> _state.update { it.copy(error = "Kolicina mora biti veca od 0.") }
+            supervisorBoth ->
+                _state.update { it.copy(error = "Izaberi ILI racun banke ILI fond — ne oba.") }
+            supervisorNeither ->
+                _state.update { it.copy(error = "Izaberi racun banke ili fond za podmirenje.") }
             current.selectedAccount == null && !current.isEmployee ->
                 _state.update { it.copy(error = "Odaberi racun za podmirenje.") }
             current.orderType == OrderType.Limit && current.limitPrice.isBlank() ->
@@ -141,8 +164,12 @@ class CreateOrderViewModel @Inject constructor(
                 orderType = current.orderType.api,
                 direction = current.direction.api,
                 quantity = qty,
-                limitPrice = current.limitPrice.toDoubleOrNull(),
-                stopPrice = current.stopPrice.toDoubleOrNull(),
+                // P1-mobile-banking-1 (R7-2016/2022): srpski zarez ("12,50") nije validan
+                // za Kotlin `toBigDecimalOrNull()` → vracao bi null → LIMIT/STOP cena se
+                // tiho gubila i order isao bez/sa pogresnom cenom. Koristi sr-RS svestan
+                // `MoneyFormatter.parseBigDecimal` (zarez=decimala, tacka=hiljade).
+                limitPrice = MoneyFormatter.parseBigDecimal(current.limitPrice),
+                stopPrice = MoneyFormatter.parseBigDecimal(current.stopPrice),
                 allOrNone = current.allOrNone,
                 margin = current.useMargin,
                 accountId = current.selectedAccount?.id,
@@ -237,11 +264,12 @@ data class CreateOrderState(
     val exchangeNextOpen: String? = null,
     val error: String? = null
 ) {
-    val estimatedTotal: Double?
+    val estimatedTotal: java.math.BigDecimal?
         get() {
             val qty = quantity.toIntOrNull() ?: return null
-            val price = limitPrice.toDoubleOrNull() ?: listing?.price ?: return null
-            return qty * price
+            // P1-mobile-banking-1: sr-RS parser da "12,50" ne procita kao null.
+            val price = MoneyFormatter.parseBigDecimal(limitPrice) ?: listing?.price ?: return null
+            return price.multiply(java.math.BigDecimal(qty))
         }
 
     /**

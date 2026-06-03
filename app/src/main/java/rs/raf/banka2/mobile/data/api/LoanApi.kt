@@ -3,6 +3,7 @@ package rs.raf.banka2.mobile.data.api
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.GET
+import retrofit2.http.Header
 import retrofit2.http.POST
 import retrofit2.http.Path
 import retrofit2.http.Query
@@ -29,8 +30,17 @@ interface LoanApi {
     @GET("loans/{id}/installments")
     suspend fun getInstallments(@Path("id") id: Long): Response<List<LoanInstallmentDto>>
 
+    /**
+     * P1-mobile-banking-1 (R1-263): BE [LoanController.earlyRepayment] cita OTP iz
+     * `X-OTP-Code` header-a (POST nema body). Bez header-a BE-PAY-06 OTP gate baca
+     * 403 → prevremena otplata je bila de-facto mrtva sa Mobile-a. Header je
+     * opcioni (`required = false`) radi backward-compat sa starim BE-om.
+     */
     @POST("loans/{id}/early-repayment")
-    suspend fun earlyRepay(@Path("id") id: Long): Response<LoanDto>
+    suspend fun earlyRepay(
+        @Path("id") id: Long,
+        @Header("X-OTP-Code") otpCode: String? = null
+    ): Response<LoanDto>
 
     @GET("loans/requests/my")
     suspend fun getMyApplications(): Response<List<LoanApplicationResponseDto>>

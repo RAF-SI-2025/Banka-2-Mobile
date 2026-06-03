@@ -14,17 +14,20 @@ import rs.raf.banka2.mobile.data.dto.notification.UnreadCountDto
  *
  * Endpoint-i prate FE `notificationService` (`/notifications`,
  * `/notifications/unread-count`, `/notifications/{id}/read`,
- * `/notifications/read-all`). Filter mode se mapira u BE query param `read`
- * (true/false). FE koristi paginaciju (`page` + `size`).
+ * `/notifications/read-all`). FE koristi paginaciju (`page` + `size`).
+ *
+ * P1-mobile-banking-1 (R3-1626): BE `NotificationController.getMyNotifications`
+ * cita query param `onlyUnread` (Boolean), NE `read`. Stari Mobile param `read=false`
+ * je BE tiho ignorisao → UNREAD filter je uvek vracao SVE. Ispravljeno na `onlyUnread`.
  */
 interface NotificationApi {
 
     /**
-     * @param read null = sve; true = procitane; false = neprocitane.
+     * @param onlyUnread null/false = sve; true = samo neprocitane (BE filter).
      */
     @GET("notifications")
     suspend fun list(
-        @Query("read") read: Boolean? = null,
+        @Query("onlyUnread") onlyUnread: Boolean? = null,
         @Query("page") page: Int = 0,
         @Query("size") size: Int = 20,
     ): Response<NotificationPageDto>

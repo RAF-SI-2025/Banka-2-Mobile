@@ -110,7 +110,7 @@ fun PortfolioScreen(
                                 Text(
                                     MoneyFormatter.format(summary.totalProfit, 2),
                                     style = MaterialTheme.typography.titleMedium,
-                                    color = if (summary.totalProfit >= 0) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error
+                                    color = if (summary.totalProfit >= java.math.BigDecimal.ZERO) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error
                                 )
                             }
                             // Spec Celina 3 §516-518 (P2.4): klik otvara per-listing breakdown.
@@ -128,7 +128,7 @@ fun PortfolioScreen(
                                     )
                                 }
                                 Text(
-                                    MoneyFormatter.format(summary.taxOwed ?: 0.0, 2),
+                                    MoneyFormatter.format(summary.taxOwed ?: java.math.BigDecimal.ZERO, 2),
                                     style = MaterialTheme.typography.titleMedium,
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
@@ -210,19 +210,19 @@ private fun TaxBreakdownExpansion(
                     Column(modifier = Modifier.weight(1f)) {
                         Text(item.ticker ?: "—", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
                         Text(
-                            "Profit native: ${MoneyFormatter.formatWithCurrency(item.profitNative ?: 0.0, item.listingCurrency)}",
+                            "Profit native: ${MoneyFormatter.formatWithCurrency(item.profitNative ?: java.math.BigDecimal.ZERO, item.listingCurrency)}",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                     Column(horizontalAlignment = Alignment.End) {
                         Text(
-                            "${MoneyFormatter.format(item.profitRsd ?: 0.0, 2)} RSD",
+                            "${MoneyFormatter.format(item.profitRsd ?: java.math.BigDecimal.ZERO, 2)} RSD",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = if ((item.profitRsd ?: 0.0) >= 0) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error
+                            color = if ((item.profitRsd ?: java.math.BigDecimal.ZERO) >= java.math.BigDecimal.ZERO) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error
                         )
                         Text(
-                            "Porez: ${MoneyFormatter.format(item.taxOwed ?: 0.0, 2)}",
+                            "Porez: ${MoneyFormatter.format(item.taxOwed ?: java.math.BigDecimal.ZERO, 2)}",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.primary,
                             fontWeight = FontWeight.SemiBold

@@ -30,10 +30,12 @@ data class WatchlistDto(
 
 /**
  * Mapira na BE `WatchlistItemDto`. BE imenuje polja `ticker`, `listingName`,
- * `securityType`, `exchangeName`, `dailyChange`. Mi cuvamo `dayChangePercent`
- * derived (BE `dailyChange` je apsolutna promena cene; procenat racunamo iz
- * `(dailyChange / (currentPrice - dailyChange)) * 100` lokalno u UI ako BE
- * ne posalje).
+ * `securityType`, `exchangeName`, `dailyChange`.
+ *
+ * R1 812: `dailyChange` je PROCENAT dnevne promene (BE
+ * `WatchlistService` ga puni iz `listing.getChangePercent()`), NE apsolutna
+ * promena cene — UI ga prikazuje sa `%` sufiksom direktno (bez dodatnog
+ * preracuna iz cene).
  */
 @JsonClass(generateAdapter = true)
 data class WatchlistItemDto(
@@ -54,6 +56,18 @@ data class WatchlistItemDto(
 @JsonClass(generateAdapter = true)
 data class CreateWatchlistRequest(
     val name: String,
+)
+
+/**
+ * Payload za POST /watchlists/{id}/items.
+ *
+ * KONTRAKT (R1-236): BE `addItem` cita `@RequestBody AddWatchlistItemRequest`
+ * (`{"listingId":123}`), NE `@RequestParam`. Ranije je Mobile slao `?listingId=`
+ * query → BE @NotNull listingId null → 400 na svako dodavanje u watchlistu.
+ */
+@JsonClass(generateAdapter = true)
+data class AddWatchlistItemRequest(
+    val listingId: Long,
 )
 
 /**

@@ -20,9 +20,21 @@ class AuditActionTypesTest {
     }
 
     @Test
-    fun listSize_matchesBackendEnum() {
-        // BE AuditActionType enum ima 6 vrednosti — paritet sa FE/Mobile.
-        assertEquals(6, AuditActionTypes.ALL.size)
+    fun listSize_matchesBackendUnion() {
+        // R1-594: UNIJA AuditActionType enum-a OBA servisa (banka-core + trading) = 30.
+        // Paritet sa FE `types/audit.ts` (AUDIT_ACTION_TYPES).
+        assertEquals(30, AuditActionTypes.ALL.size)
+    }
+
+    @Test
+    fun coversBankCoreAndTradingTypes() {
+        // Spot-check da nove kategorije (krediti/placanja/kartice/fondovi) postoje.
+        listOf(
+            "LOAN_APPROVED", "PAYMENT_CREATED", "CARD_BLOCKED",
+            "SAVINGS_OPENED", "FUND_CREATED", "USED_LIMIT_RESET_ALL"
+        ).forEach { type ->
+            assertTrue("Missing type $type", AuditActionTypes.ALL.contains(type))
+        }
     }
 
     @Test

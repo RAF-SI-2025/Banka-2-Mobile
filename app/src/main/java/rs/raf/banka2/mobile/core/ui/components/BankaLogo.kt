@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -82,29 +81,6 @@ fun BankaLogo(
                 .fillMaxSize()
                 .padding(if (showHalo) size * 0.10f else 0.dp)
                 .scale(scale)
-        )
-    }
-}
-
-/**
- * Kompaktni inline logo za top-bar / header ikone.
- */
-@Composable
-fun BankaLogoCompact(
-    modifier: Modifier = Modifier,
-    size: Dp = 32.dp
-) {
-    Box(
-        modifier = modifier
-            .size(size)
-            .clip(CircleShape)
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh),
-        contentAlignment = Alignment.Center
-    ) {
-        Image(
-            painter = painterResource(id = R.drawable.banka_logo),
-            contentDescription = "Banka 2",
-            modifier = Modifier.fillMaxSize().padding(size * 0.08f)
         )
     }
 }

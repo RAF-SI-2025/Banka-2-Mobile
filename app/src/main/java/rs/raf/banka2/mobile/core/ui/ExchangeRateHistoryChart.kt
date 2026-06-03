@@ -37,7 +37,7 @@ fun ExchangeRateHistoryChart(
             .fillMaxWidth()
             .height(height)
     ) {
-        val values = points.map { it.rate }
+        val values = points.map { it.rate.toDouble() }
         val minV = values.minOrNull() ?: return@Canvas
         val maxV = (values.maxOrNull() ?: return@Canvas).coerceAtLeast(minV + 0.0001)
         val range = maxV - minV
@@ -64,7 +64,7 @@ fun ExchangeRateHistoryChart(
         }
         points.forEachIndexed { index, p ->
             val x = stepX * index
-            val normalized = ((p.rate - minV) / range).toFloat()
+            val normalized = ((p.rate.toDouble() - minV) / range).toFloat()
             val y = h - (normalized * h)
             if (index == 0) {
                 linePath.moveTo(x, y)

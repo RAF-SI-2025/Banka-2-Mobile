@@ -3,6 +3,7 @@ package rs.raf.banka2.mobile.data.api
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.GET
+import retrofit2.http.Header
 import retrofit2.http.PATCH
 import retrofit2.http.POST
 import retrofit2.http.Path
@@ -42,11 +43,15 @@ interface CardApi {
     /**
      * ME-03: dopuna INTERNET_PREPAID kartice — prebacuje iznos sa Account-a na Card.prepaidBalance.
      * Spec C2 §270 (14.05.2026 vece-3 nadogradnja). BE endpoint: POST /cards/{id}/top-up.
+     *
+     * P1-idempotency-1 (R5-1849): saljemo Idempotency-Key (UUID po pozivu) da BE
+     * deduplikuje transport-level retry/double-submit i ne prebaci sredstva dvaput.
      */
     @POST("cards/{id}/top-up")
     suspend fun topUpCard(
         @Path("id") id: Long,
-        @Body body: CardTopUpRequest
+        @Body body: CardTopUpRequest,
+        @Header("Idempotency-Key") idempotencyKey: String
     ): Response<CardDto>
 
     /**
@@ -55,7 +60,8 @@ interface CardApi {
     @POST("cards/{id}/withdraw")
     suspend fun withdrawFromCard(
         @Path("id") id: Long,
-        @Body body: CardWithdrawRequest
+        @Body body: CardWithdrawRequest,
+        @Header("Idempotency-Key") idempotencyKey: String
     ): Response<CardDto>
 
     @POST("cards/requests")
@@ -66,12 +72,6 @@ interface CardApi {
         @Path("id") id: Long,
         @Body body: rs.raf.banka2.mobile.data.dto.payment.OtpVerifyRequest
     ): Response<CardRequestResponseDto>
-
-    @GET("cards/requests/my")
-    suspend fun getMyCardRequests(
-        @Query("page") page: Int = 0,
-        @Query("limit") limit: Int = 50
-    ): Response<PageResponse<CardRequestResponseDto>>
 
     @GET("cards/requests")
     suspend fun listAllCardRequests(

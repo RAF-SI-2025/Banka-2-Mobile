@@ -175,10 +175,19 @@ data class HomeState(
      *
      * ME-11: rezultat je `BigDecimal` jer su Account.balance i Payment.amount
      * sada BigDecimal. Sparkline crtanje koristi `.toDouble()` na point-u.
+     *
+     * R2-1492 [money]: trend krece od `totalRsdBalance` (samo RSD racuni), pa
+     * SME da sabira/oduzima SAMO RSD placanja. Ranije se `p.amount` sabirao bez
+     * obzira na valutu → FX placanje od npr. 1000 EUR bi pomerilo RSD trend za
+     * 1000 (kao da je 1000 RSD) i besmisleno iskrivilo grafik. Filtriramo na
+     * RSD valutu (placanja bez valute tretiramo kao RSD — domaci default).
      */
     val balanceTrend: List<BigDecimal>
         get() {
-            val sorted = recentPayments.takeLast(7)
+            val rsdPayments = recentPayments.filter {
+                it.currency.isNullOrBlank() || it.currency.equals("RSD", true)
+            }
+            val sorted = rsdPayments.takeLast(7)
             if (sorted.isEmpty()) return emptyList()
             var running = totalRsdBalance
             val points = mutableListOf<BigDecimal>()

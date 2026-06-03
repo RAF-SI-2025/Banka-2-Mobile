@@ -1,5 +1,6 @@
 package rs.raf.banka2.mobile.data.dto.loan
 
+import com.squareup.moshi.Json
 import com.squareup.moshi.JsonClass
 import java.math.BigDecimal
 
@@ -49,18 +50,30 @@ data class LoanInstallmentDto(
  * za backwards-compat sa starim BE-om koji jos ne zahteva OTP.
  *
  * ME-11: amount + monthlyIncome BigDecimal (spec C2 §255).
+ *
+ * P1-mobile-banking-1 (R1-131): KONTRAKT uskladjen sa BE `LoanRequestDto`
+ * (`rs.raf.banka2_bek.loan.dto.LoanRequestDto`). BE zahteva (`@NotNull`)
+ * `interestType` i `repaymentPeriod` (+`@NotBlank` `accountNumber`/`currency`).
+ * Stari Mobile DTO je slao `durationMonths`/`purpose`/`employer` i NIJE slao
+ * `interestType`/`repaymentPeriod` → svaki apply je padao na 400. Polja su sada
+ * preimenovana 1:1 na BE wire-imena (`@Json`) i dodata su obavezna polja.
  */
 @JsonClass(generateAdapter = true)
 data class LoanApplicationDto(
     val loanType: String,
-    val amount: BigDecimal,
-    val durationMonths: Int,
-    val purpose: String,
-    val accountId: Long? = null,
-    val accountNumber: String? = null,
-    val currency: String? = null,
+    /** FIXED / VARIABLE — BE `interestType` @NotNull. */
+    val interestType: String,
+    @param:Json(name = "amount") val amount: BigDecimal,
+    @param:Json(name = "currency") val currency: String,
+    /** BE `repaymentPeriod` @NotNull @Positive (broj meseci). */
+    val repaymentPeriod: Int,
+    @param:Json(name = "accountNumber") val accountNumber: String,
+    val loanPurpose: String? = null,
+    val phoneNumber: String? = null,
+    val employmentStatus: String? = null,
     val monthlyIncome: BigDecimal? = null,
-    val employer: String? = null,
+    val permanentEmployment: Boolean? = null,
+    val employmentPeriod: Int? = null,
     val otpCode: String? = null
 )
 

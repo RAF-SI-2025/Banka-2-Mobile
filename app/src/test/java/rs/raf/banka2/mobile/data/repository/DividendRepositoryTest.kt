@@ -13,6 +13,7 @@ import rs.raf.banka2.mobile.core.network.ApiError
 import rs.raf.banka2.mobile.core.network.ApiResult
 import rs.raf.banka2.mobile.data.api.DividendApi
 import rs.raf.banka2.mobile.data.dto.dividend.DividendPayoutDto
+import java.math.BigDecimal
 
 class DividendRepositoryTest {
 
@@ -22,8 +23,8 @@ class DividendRepositoryTest {
     @Test
     fun getMy_returnsSuccess() = runTest {
         val data = listOf(
-            DividendPayoutDto(id = 1L, stockTicker = "AAPL", grossAmount = 100.0, tax = 15.0, netAmount = 85.0, currencyCode = "USD"),
-            DividendPayoutDto(id = 2L, stockTicker = "MSFT", grossAmount = 200.0, tax = 30.0, netAmount = 170.0, currencyCode = "USD"),
+            DividendPayoutDto(id = 1L, stockTicker = "AAPL", grossAmount = BigDecimal("100.0"), tax = BigDecimal("15.0"), netAmount = BigDecimal("85.0"), currencyCode = "USD"),
+            DividendPayoutDto(id = 2L, stockTicker = "MSFT", grossAmount = BigDecimal("200.0"), tax = BigDecimal("30.0"), netAmount = BigDecimal("170.0"), currencyCode = "USD"),
         )
         coEvery { api.getMy() } returns Response.success(data)
 
@@ -31,13 +32,13 @@ class DividendRepositoryTest {
         assertTrue(result is ApiResult.Success)
         assertEquals(2, (result as ApiResult.Success).data.size)
         assertEquals("AAPL", result.data[0].stockTicker)
-        assertEquals(85.0, result.data[0].netAmount, 0.001)
+        assertEquals(BigDecimal("85.0"), result.data[0].netAmount)
     }
 
     @Test
     fun getByPosition_returnsSuccess() = runTest {
         val data = listOf(
-            DividendPayoutDto(id = 5L, stockTicker = "AAPL", grossAmount = 50.0, tax = 7.5, netAmount = 42.5, currencyCode = "USD")
+            DividendPayoutDto(id = 5L, stockTicker = "AAPL", grossAmount = BigDecimal("50.0"), tax = BigDecimal("7.5"), netAmount = BigDecimal("42.5"), currencyCode = "USD")
         )
         coEvery { api.getByPosition(42L) } returns Response.success(data)
 

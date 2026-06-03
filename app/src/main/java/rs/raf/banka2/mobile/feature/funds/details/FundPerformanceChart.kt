@@ -44,7 +44,7 @@ fun FundPerformanceChart(
     }
 
     Canvas(modifier = modifier.fillMaxWidth().height(height)) {
-        val values = points.map { it.value }
+        val values = points.map { it.value.toDouble() }
         val minV = values.minOrNull() ?: return@Canvas
         val maxV = (values.maxOrNull() ?: return@Canvas).coerceAtLeast(minV + 0.0001)
         val range = maxV - minV
@@ -68,7 +68,7 @@ fun FundPerformanceChart(
         val fill = Path()
         points.forEachIndexed { index, point ->
             val x = stepX * index
-            val y = h - (((point.value - minV) / range).toFloat() * h)
+            val y = h - (((point.value.toDouble() - minV) / range).toFloat() * h)
             if (index == 0) {
                 line.moveTo(x, y); fill.moveTo(x, h); fill.lineTo(x, y)
             } else {

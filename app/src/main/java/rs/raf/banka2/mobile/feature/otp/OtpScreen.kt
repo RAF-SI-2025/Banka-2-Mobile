@@ -53,7 +53,10 @@ fun OtpScreen(
         }
     }
 
-    LaunchedEffect(state.code) {
+    // R4-1757: keyed na refreshTick (ne na state.code) — svaki uspesan poll
+    // restartuje countdown sa svezim secondsLeft. Ranije bi countdown zamrznuo
+    // na 0 jer se `code` ne menja izmedju poll-ova istog koda.
+    LaunchedEffect(state.refreshTick) {
         while (state.secondsLeft > 0) {
             delay(1000L)
             viewModel.tickOneSecond()

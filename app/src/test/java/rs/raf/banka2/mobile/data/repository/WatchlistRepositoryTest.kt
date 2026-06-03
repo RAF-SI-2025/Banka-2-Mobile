@@ -13,6 +13,7 @@ import retrofit2.Response
 import rs.raf.banka2.mobile.core.network.ApiError
 import rs.raf.banka2.mobile.core.network.ApiResult
 import rs.raf.banka2.mobile.data.api.WatchlistApi
+import rs.raf.banka2.mobile.data.dto.watchlist.AddWatchlistItemRequest
 import rs.raf.banka2.mobile.data.dto.watchlist.CreateWatchlistRequest
 import rs.raf.banka2.mobile.data.dto.watchlist.WatchlistDto
 import rs.raf.banka2.mobile.data.dto.watchlist.WatchlistFilterType
@@ -59,13 +60,25 @@ class WatchlistRepositoryTest {
     fun addItem_409Conflict_mapsToConflictApiError() = runTest {
         val errorBody = """{"message":"already in watchlist"}"""
             .toResponseBody("application/json".toMediaTypeOrNull())
-        coEvery { api.addItem(1L, 99L) } returns Response.error(409, errorBody)
+        // R1-236: addItem salje @RequestBody AddWatchlistItemRequest (NE query param).
+        coEvery { api.addItem(1L, AddWatchlistItemRequest(99L)) } returns Response.error(409, errorBody)
 
         val result = repo.addItem(1L, 99L)
         assertTrue(result is ApiResult.Failure)
         val error = (result as ApiResult.Failure).error
         assertEquals(ApiError.Kind.Conflict, error.kind)
         assertEquals(409, error.httpCode)
+    }
+
+    @Test
+    fun addItem_sendsListingIdInBody() = runTest {
+        coEvery { api.addItem(1L, AddWatchlistItemRequest(99L)) } returns Response.success(
+            WatchlistItemDto(id = 5, watchlistId = 1, listingId = 99, ticker = "AAPL")
+        )
+
+        val result = repo.addItem(1L, 99L)
+        assertTrue(result is ApiResult.Success)
+        assertEquals(99L, (result as ApiResult.Success).data.listingId)
     }
 
     @Test

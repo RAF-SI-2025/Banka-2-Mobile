@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import rs.raf.banka2.mobile.core.format.DateFormatter
 import rs.raf.banka2.mobile.core.network.ApiResult
 import rs.raf.banka2.mobile.data.dto.order.OrderDto
 import rs.raf.banka2.mobile.data.repository.OrderRepository
@@ -41,7 +42,19 @@ class MyOrdersViewModel @Inject constructor(
     fun setDateFrom(value: String) = _state.update { it.copy(filterDateFrom = value) }
     fun setDateTo(value: String) = _state.update { it.copy(filterDateTo = value) }
 
-    fun applyFilters() = refresh()
+    /**
+     * R1-597: validiraj datumske filtere PRE BE poziva. Slobodan unos ("abc",
+     * "2026-13-40") je ranije isao direktno BE-u koji radi `LocalDate.parse` →
+     * 400/500. Ako je bilo koji datum nevalidan, postavi gresku i NE pozivaj refresh.
+     */
+    fun applyFilters() {
+        val s = _state.value
+        if (!DateFormatter.isValidIsoDate(s.filterDateFrom) || !DateFormatter.isValidIsoDate(s.filterDateTo)) {
+            _state.update { it.copy(error = "Datum mora biti u formatu YYYY-MM-DD.") }
+            return
+        }
+        refresh()
+    }
 
     fun resetFilters() {
         _state.update {
@@ -95,16 +108,22 @@ data class MyOrdersState(
     val filterDateTo: String = ""
 )
 
-/** Lista podrzanih statusa za filter chip. */
-val MY_ORDERS_STATUS_OPTIONS: List<String> = listOf("ALL", "PENDING", "APPROVED", "DONE", "PARTIAL_FILLED", "DECLINED", "CANCELLED")
+/**
+ * Lista podrzanih statusa za filter chip.
+ *
+ * R1-592: BE `OrderStatus` enum ima SAMO 4 vrednosti (PENDING/APPROVED/DECLINED/DONE).
+ * Ranije su tu bili i "PARTIAL_FILLED" i "CANCELLED" koji NE postoje u BE enumu —
+ * BE servis ih ignorise (`status` koji ne matchuje enum → filter se ne primeni →
+ * tiho vraca SVE ordere). To je obmanjivalo korisnika: chip "Otkazan"/"Parcijalan"
+ * je vracao kompletnu listu. Drzimo SAMO realne BE statuse.
+ */
+val MY_ORDERS_STATUS_OPTIONS: List<String> = listOf("ALL", "PENDING", "APPROVED", "DONE", "DECLINED")
 val MY_ORDERS_STATUS_LABEL_SR: Map<String, String> = mapOf(
     "ALL" to "Sve",
     "PENDING" to "Ceka",
     "APPROVED" to "Aktivan",
     "DONE" to "Zavrsen",
-    "PARTIAL_FILLED" to "Parcijalan",
-    "DECLINED" to "Odbijen",
-    "CANCELLED" to "Otkazan"
+    "DECLINED" to "Odbijen"
 )
 
 val MY_ORDERS_LISTING_TYPE_OPTIONS: List<String> = listOf("ALL", "STOCK", "FUTURES", "FOREX", "OPTION")

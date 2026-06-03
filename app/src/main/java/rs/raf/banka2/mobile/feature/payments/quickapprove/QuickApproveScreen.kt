@@ -30,11 +30,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.delay
 import rs.raf.banka2.mobile.core.ui.components.AnimatedBackground
+import rs.raf.banka2.mobile.core.ui.components.AppTextField
 import rs.raf.banka2.mobile.core.ui.components.BankaScaffold
 import rs.raf.banka2.mobile.core.ui.components.ErrorBanner
 import rs.raf.banka2.mobile.core.ui.components.GlassCard
@@ -42,12 +45,11 @@ import java.time.Duration
 import java.time.Instant
 
 /**
- * TODO_final Mobile bonus #7 — Quick Approve placeholder.
+ * TODO_final Mobile bonus #7 — Quick Approve ekran (pun produkcioni UI).
  *
- * UI prikazuje detalje placanja koje ceka odobrenje + 5min countdown
- * iz notifikacije. Klik na "Odobri" trenutno pokazuje napomenu da
- * BE endpoint jos nije implementiran — u punoj integraciji bi pokrenuo
- * OTP modal + POST /payments/{id}/approve.
+ * R5 1926: vise NIJE placeholder — ekran prikazuje detalje placanja koje ceka
+ * odobrenje + 5min countdown iz notifikacije + polje za 6-cifreni OTP, i klik na
+ * "Odobri" gadja BE `POST /payments/{id}/approve`.
  */
 @Composable
 fun QuickApproveScreen(
@@ -103,6 +105,25 @@ fun QuickApproveScreen(
                 DetailRow("Status", state.status ?: "—")
             }
 
+            GlassCard(modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    text = "Verifikacioni kod (6 cifara)",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.height(8.dp))
+                AppTextField(
+                    value = state.otpCode,
+                    onValueChange = viewModel::setOtpCode,
+                    label = "OTP kod",
+                    placeholder = "123456",
+                    enabled = !state.expired && !state.approving,
+                    keyboardType = KeyboardType.NumberPassword,
+                    imeAction = ImeAction.Done,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+
             Spacer(Modifier.weight(1f))
 
             Row(
@@ -111,11 +132,13 @@ fun QuickApproveScreen(
             ) {
                 OutlinedButton(
                     onClick = viewModel::cancel,
+                    enabled = !state.approving,
                     modifier = Modifier.weight(1f),
                 ) { Text("Otkazi") }
                 Button(
                     onClick = viewModel::onApproveRequested,
-                    enabled = !state.expired && !state.loading && state.error == null,
+                    enabled = !state.expired && !state.loading && !state.approving &&
+                        state.otpCode.length == 6,
                     modifier = Modifier.weight(1f),
                 ) {
                     Icon(

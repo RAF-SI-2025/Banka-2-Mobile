@@ -7,10 +7,9 @@ import retrofit2.http.GET
 import retrofit2.http.POST
 import retrofit2.http.Path
 import retrofit2.http.Query
-import rs.raf.banka2.mobile.data.dto.otc.AcceptOtcOfferDto
 import rs.raf.banka2.mobile.data.dto.otc.CounterOtcOfferDto
 import rs.raf.banka2.mobile.data.dto.otc.CreateOtcOfferDto
-import rs.raf.banka2.mobile.data.dto.otc.ExerciseRequestDto
+import rs.raf.banka2.mobile.data.dto.otc.OtcExerciseResultDto
 import rs.raf.banka2.mobile.data.dto.otc.CounterOtcInterbankOfferRequest
 import rs.raf.banka2.mobile.data.dto.otc.CreateOtcInterbankOfferRequest
 import rs.raf.banka2.mobile.data.dto.otc.OtcContractDto
@@ -43,10 +42,15 @@ interface OtcApi {
     @POST("otc/offers/{offerId}/decline")
     suspend fun declineIntra(@Path("offerId") offerId: Long): Response<OtcOfferDto>
 
+    /**
+     * BE `acceptOffer` cita `buyerAccountId` kao `@RequestParam` (query), NE body.
+     * Ranije je Mobile slao `AcceptOtcOfferDto` telo → BE ga ignorisao → buyerAccountId
+     * uvek null → 400 (klijent mora navesti racun za podmirenje premije).
+     */
     @POST("otc/offers/{offerId}/accept")
     suspend fun acceptIntra(
         @Path("offerId") offerId: Long,
-        @Body body: AcceptOtcOfferDto
+        @Query("buyerAccountId") buyerAccountId: Long? = null
     ): Response<OtcOfferDto>
 
     @GET("otc/contracts")
@@ -55,11 +59,18 @@ interface OtcApi {
     @POST("otc/contracts/{contractId}/exercise")
     suspend fun exerciseIntra(
         @Path("contractId") contractId: Long,
-        @Body body: ExerciseRequestDto
-    ): Response<OtcContractDto>
+        @Query("buyerAccountId") buyerAccountId: Long? = null
+    ): Response<OtcExerciseResultDto>
 
-    @GET("otc/contracts/{contractId}/saga-status")
-    suspend fun sagaStatusIntra(@Path("contractId") contractId: Long): Response<SagaStatusDto>
+    @GET("otc/saga/{sagaId}")
+    suspend fun sagaStatusIntra(@Path("sagaId") sagaId: String): Response<SagaStatusDto>
+
+    /**
+     * R1-479: rucno odustajanje od OTC ugovora (BE `POST /otc/contracts/{id}/abandon`).
+     * Kupac NE dobija nazad placenu premiju (BE business rule). Vraca azuriran ugovor.
+     */
+    @POST("otc/contracts/{contractId}/abandon")
+    suspend fun abandonIntra(@Path("contractId") contractId: Long): Response<OtcContractDto>
 
     @GET("interbank/otc/listings")
     suspend fun discoverInter(): Response<List<OtcInterbankListingApiDto>>

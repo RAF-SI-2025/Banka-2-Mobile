@@ -91,7 +91,7 @@ fun MarginTransactionsScreen(
                             Text(
                                 MoneyFormatter.format(tx.amount, 2),
                                 style = MaterialTheme.typography.titleSmall,
-                                color = if (tx.type.equals("DEPOSIT", true) || tx.amount > 0) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error
+                                color = if (tx.type.equals("DEPOSIT", true) || tx.amount > java.math.BigDecimal.ZERO) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error
                             )
                             tx.balanceAfter?.let {
                                 Text("Saldo: ${MoneyFormatter.format(it, 2)}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
