@@ -57,10 +57,10 @@ class ProfitBankViewModel @Inject constructor(
 
     fun closeDialogs() = _state.update { it.copy(investTarget = null, withdrawTarget = null) }
 
-    fun invest(fundId: Long, sourceAccountId: Long, amount: Double) {
+    fun invest(fundId: Long, sourceAccountId: Long, amount: java.math.BigDecimal, currency: String = "RSD") {
         viewModelScope.launch {
             _state.update { it.copy(submitting = true) }
-            when (val result = fundRepository.invest(fundId, sourceAccountId, amount)) {
+            when (val result = fundRepository.invest(fundId, sourceAccountId, amount, currency)) {
                 is ApiResult.Success -> {
                     _state.update { it.copy(submitting = false, investTarget = null) }
                     _events.send(ProfitBankEvent.Toast("Uplata u fond uspesna."))
@@ -74,7 +74,7 @@ class ProfitBankViewModel @Inject constructor(
         }
     }
 
-    fun withdraw(fundId: Long, destinationAccountId: Long, amount: Double?, withdrawAll: Boolean) {
+    fun withdraw(fundId: Long, destinationAccountId: Long, amount: java.math.BigDecimal?, withdrawAll: Boolean) {
         viewModelScope.launch {
             _state.update { it.copy(submitting = true) }
             when (val result = fundRepository.withdraw(fundId, destinationAccountId, amount, withdrawAll)) {
@@ -114,7 +114,12 @@ class ProfitBankViewModel @Inject constructor(
      * (222...). UI prikazuje listu, bez filtriranja na FE strani.
      */
     private suspend fun loadAccounts() {
-        when (val result = accountRepository.getMyAccounts()) {
+        // R1-272: ProfitBank uplata/povlacenje koristi BANKINE racune, ne licne
+        // racune supervizora. `getMyAccounts()` je vracao supervizorove licne
+        // racune (besmisleno za fond-operacije banke). `listAllAccounts()`
+        // (GET /accounts/all) vraca sve racune kojima supervizor ima pristup,
+        // ukljucujuci bankine.
+        when (val result = accountRepository.listAllAccounts()) {
             is ApiResult.Success -> _state.update { it.copy(accounts = result.data) }
             is ApiResult.Failure -> Unit
             ApiResult.Loading -> Unit

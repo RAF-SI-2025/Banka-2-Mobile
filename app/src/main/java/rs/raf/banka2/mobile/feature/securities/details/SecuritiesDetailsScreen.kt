@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -156,7 +157,13 @@ fun SecuritiesDetailsScreen(
                             )
                         }
                     }
-                    items(state.optionChains, key = { it.settlementDate ?: it.hashCode().toString() }) { chain ->
+                    // R3-1605: stabilan kompozitni key (settlementDate + index) da
+                    // dva lanca sa istim/null settlement datumom ne kolidiraju
+                    // ("Key was already used" crash umesto `hashCode().toString()`).
+                    itemsIndexed(
+                        state.optionChains,
+                        key = { index, it -> "${it.settlementDate.orEmpty()}-$index" }
+                    ) { _, chain ->
                         OptionChainCard(
                             chain = chain,
                             currentPrice = listing.price,
@@ -181,7 +188,7 @@ fun SecuritiesDetailsScreen(
         PriceAlertDialog(
             listingId = listing.id,
             ticker = listing.ticker,
-            currentPrice = listing.price,
+            currentPrice = listing.price.toDouble(),
             onDismiss = { priceAlertOpen = false },
             onCreated = { priceAlertOpen = false },
         )
@@ -311,7 +318,7 @@ private fun StrikeRowsStepper(value: Int, onChange: (Int) -> Unit) {
 @Composable
 private fun OptionChainCard(
     chain: OptionChainDto,
-    currentPrice: Double,
+    currentPrice: java.math.BigDecimal,
     rowsAroundPrice: Int = DEFAULT_STRIKE_ROWS,
     onExercise: (Long) -> Unit = {}
 ) {
@@ -335,7 +342,7 @@ private fun OptionChainCard(
             Text("Put premija", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         visibleEntries.forEach { entry ->
-            val isAtPrice = kotlin.math.abs(entry.strikePrice - currentPrice) <= 0.5
+            val isAtPrice = (entry.strikePrice - currentPrice).abs() <= java.math.BigDecimal("0.5")
             Row(
                 modifier = Modifier
                     .fillMaxWidth()

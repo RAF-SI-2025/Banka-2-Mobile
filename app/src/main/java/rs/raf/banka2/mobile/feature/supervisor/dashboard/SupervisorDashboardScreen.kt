@@ -57,7 +57,7 @@ fun SupervisorDashboardScreen(
                     StatCard(
                         "Profit",
                         MoneyFormatter.format(state.portfolioProfit, 2),
-                        accent = if (state.portfolioProfit >= 0) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error,
+                        accent = if (state.portfolioProfit >= java.math.BigDecimal.ZERO) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error,
                         modifier = Modifier.weight(1f)
                     )
                 }

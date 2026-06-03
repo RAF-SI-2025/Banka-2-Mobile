@@ -90,7 +90,6 @@ fun PriceAlertDialog(
                 )
                 Spacer(Modifier.height(6.dp))
                 ConditionCard(
-                    condition = PriceAlertCondition.ABOVE,
                     selected = state.condition == PriceAlertCondition.ABOVE,
                     icon = Icons.Filled.TrendingUp,
                     iconColor = MaterialTheme.colorScheme.error,
@@ -100,7 +99,6 @@ fun PriceAlertDialog(
                 )
                 Spacer(Modifier.height(6.dp))
                 ConditionCard(
-                    condition = PriceAlertCondition.BELOW,
                     selected = state.condition == PriceAlertCondition.BELOW,
                     icon = Icons.Filled.TrendingDown,
                     iconColor = MaterialTheme.colorScheme.tertiary,
@@ -164,7 +162,8 @@ fun PriceAlertDialog(
 
 @Composable
 private fun ConditionCard(
-    condition: PriceAlertCondition,
+    // R2 1499: `condition` parametar uklonjen — kartica je cisto vizuelna (selected
+    // stanje + onSelect callback nose ABOVE/BELOW izbor); sam enum se nije koristio.
     selected: Boolean,
     icon: ImageVector,
     iconColor: Color,
@@ -172,7 +171,6 @@ private fun ConditionCard(
     description: String,
     onSelect: () -> Unit,
 ) {
-    @Suppress("UNUSED_PARAMETER") val unused = condition
     Row(
         modifier = Modifier
             .fillMaxWidth()

@@ -21,12 +21,17 @@ class AuthInterceptor @Inject constructor(
         val original = chain.request()
         val path = original.url.encodedPath
 
-        // SEC-06 / ME-AUTH-01: exact-match bypass listu — NIKAD ne sme da koristimo
-        // startsWith("/auth/") jer to puca server-side JWT blacklist na /auth/logout
-        // (logout mora ici sa Bearer header-om da BE moze da ga blacklist-uje).
-        // Slicno, /auth-employee/activation-token/{token}/status je javni pre-check
-        // a /auth-employee/activate prima token kroz body, ne kroz Authorization.
-        if (path in BYPASS_PATHS || isActivationTokenStatusPath(path)) {
+        // SEC-06 / ME-AUTH-01: bypass listu match-ujemo po SUFFIX-u, ne po exact
+        // path-u. NIKAD ne koristimo startsWith("/auth/") jer to puca server-side
+        // JWT blacklist na /auth/logout (logout mora ici sa Bearer header-om da BE
+        // moze da ga blacklist-uje). Slicno, /auth-employee/activation-token/{token}/
+        // status je javni pre-check a /auth-employee/activate prima token kroz body.
+        //
+        // P1-fe-mobile-authz-1 (265): RELEASE base URL je `.../api/` pa encodedPath
+        // postaje `/api/auth/login` — exact-match na `/auth/login` PROMASUJE → na
+        // login/refresh se kaci (stale) Bearer header. Suffix-match
+        // (`endsWith`) pokriva i `/api/`-prefiksovan i debug `/`-prefiksovan path.
+        if (isBypassPath(path) || isActivationTokenStatusPath(path)) {
             return chain.proceed(original)
         }
 
@@ -42,12 +47,23 @@ class AuthInterceptor @Inject constructor(
     }
 
     /**
+     * P1-fe-mobile-authz-1 (265): suffix-match da bi i `/api/`-prefiksovan
+     * (release) i `/`-prefiksovan (debug) path bili pokriveni. Eksaktan path
+     * (`/auth/login`) ili `.../auth/login` oba prolaze; bilo koji drugi auth
+     * endpoint (npr. `/auth/logout`, `/auth/me`) i dalje dobija Bearer.
+     */
+    private fun isBypassPath(path: String): Boolean {
+        return BYPASS_PATHS.any { suffix -> path == suffix || path.endsWith(suffix) }
+    }
+
+    /**
      * Match-uje `/auth-employee/activation-token/{token}/status` (Sc 9 pre-check
      * iz 12.05.2026 — token status check pre aktivacije). Token je dinamicki
-     * UUID pa ne moze biti u BYPASS_PATHS setu.
+     * UUID pa ne moze biti u BYPASS_PATHS setu. Koristi `contains` umesto
+     * `startsWith` radi `/api/`-prefiksa u release build-u.
      */
     private fun isActivationTokenStatusPath(path: String): Boolean {
-        return path.startsWith("/auth-employee/activation-token/") && path.endsWith("/status")
+        return path.contains("/auth-employee/activation-token/") && path.endsWith("/status")
     }
 
     private companion object {
@@ -56,7 +72,6 @@ class AuthInterceptor @Inject constructor(
         val BYPASS_PATHS = setOf(
             "/auth/login",
             "/auth/refresh",
-            "/auth/register",
             "/auth/password_reset/request",
             "/auth/password_reset/confirm",
             "/auth-employee/activate"

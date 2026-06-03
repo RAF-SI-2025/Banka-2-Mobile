@@ -60,7 +60,12 @@ fun CreateMarginScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             GlassCard(modifier = Modifier.fillMaxWidth()) {
-                Text("Vlasnik (unesi userId ILI companyId)", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
+                Text("Bazni RSD racun (obavezno)", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
+                Spacer(Modifier.height(8.dp))
+                AppTextField(value = state.accountId, onValueChange = viewModel::setAccountId, label = "Account ID (RSD racun na koji se vezuje marzni)", keyboardType = KeyboardType.Number, modifier = Modifier.fillMaxWidth())
+            }
+            GlassCard(modifier = Modifier.fillMaxWidth()) {
+                Text("Vlasnik (opciono — userId ILI companyId)", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
                 Spacer(Modifier.height(8.dp))
                 Row {
                     AppTextField(value = state.userId, onValueChange = viewModel::setUserId, label = "User ID", keyboardType = KeyboardType.Number, modifier = Modifier.weight(1f))

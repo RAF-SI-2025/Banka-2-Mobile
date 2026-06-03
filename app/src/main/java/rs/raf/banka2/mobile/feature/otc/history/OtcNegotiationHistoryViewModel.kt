@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import rs.raf.banka2.mobile.core.format.DateFormatter
 import rs.raf.banka2.mobile.core.network.ApiResult
 import rs.raf.banka2.mobile.data.dto.otchistory.OtcNegotiationHistoryDto
 import rs.raf.banka2.mobile.data.repository.OtcRepository
@@ -38,7 +39,14 @@ class OtcNegotiationHistoryViewModel @Inject constructor(
     fun setDateTo(value: String) = _state.update { it.copy(dateTo = value) }
 
     fun applyFilters() {
-        _state.update { it.copy(page = 0) }
+        val s = _state.value
+        // R1-597: validiraj datume pre BE poziva (slobodan unos → BE
+        // `LocalDateTime.parse` → 400/500).
+        if (!DateFormatter.isValidIsoDate(s.dateFrom) || !DateFormatter.isValidIsoDate(s.dateTo)) {
+            _state.update { it.copy(error = "Datum mora biti u formatu YYYY-MM-DD.") }
+            return
+        }
+        _state.update { it.copy(page = 0, error = null) }
         refresh()
     }
 
@@ -48,7 +56,8 @@ class OtcNegotiationHistoryViewModel @Inject constructor(
                 status = null,
                 dateFrom = "",
                 dateTo = "",
-                page = 0
+                page = 0,
+                error = null
             )
         }
         refresh()

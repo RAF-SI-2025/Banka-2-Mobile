@@ -59,7 +59,7 @@ class PriceAlertDialogViewModel @Inject constructor(
         val s = _state.value
         val listingId = s.listingId ?: return
         val threshold = s.threshold
-        val validation = validate(threshold, s.currentPrice)
+        val validation = validate(threshold, s.currentPrice, s.condition)
         if (validation != null) {
             _state.update { it.copy(error = validation) }
             return
@@ -84,15 +84,35 @@ class PriceAlertDialogViewModel @Inject constructor(
         /**
          * Pure validacija — vraca user-facing poruku ako threshold nije validan,
          * inace null. Testirano u `PriceAlertDialogValidationTest`.
+         *
+         * R1-598: validira i SMER. Ranije se proveravalo samo da je prag != trenutne
+         * cene, pa je ABOVE-alarm sa pragom ISPOD trenutne cene (ili BELOW iznad)
+         * bio prihvacen — takav alarm se okida ODMAH na sledecem scheduler tick-u
+         * (besmislen). Sada:
+         *   - ABOVE  → prag MORA biti > trenutne cene
+         *   - BELOW  → prag MORA biti < trenutne cene
          */
-        fun validate(threshold: BigDecimal?, currentPrice: Double?): String? {
+        fun validate(
+            threshold: BigDecimal?,
+            currentPrice: Double?,
+            condition: PriceAlertCondition,
+        ): String? {
             if (threshold == null || threshold <= BigDecimal.ZERO) {
                 return "Prag mora biti pozitivan broj."
             }
             if (currentPrice != null && currentPrice > 0.0) {
-                val diff = threshold.toDouble() - currentPrice
+                val t = threshold.toDouble()
+                val diff = t - currentPrice
                 if (kotlin.math.abs(diff) < 0.0001) {
                     return "Prag mora biti razlicit od trenutne cene (alarm bi se okinuo odmah)."
+                }
+                when (condition) {
+                    PriceAlertCondition.ABOVE -> if (t <= currentPrice) {
+                        return "Za alarm \"iznad\" prag mora biti veci od trenutne cene."
+                    }
+                    PriceAlertCondition.BELOW -> if (t >= currentPrice) {
+                        return "Za alarm \"ispod\" prag mora biti manji od trenutne cene."
+                    }
                 }
             }
             return null

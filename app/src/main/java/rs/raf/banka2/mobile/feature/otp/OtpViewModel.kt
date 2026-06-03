@@ -41,7 +41,13 @@ class OtpViewModel @Inject constructor(
                         secondsLeft = data.secondsLeft ?: 0,
                         attempts = data.attempts,
                         maxAttempts = data.maxAttempts,
-                        message = data.message
+                        message = data.message,
+                        // R4-1757: monotoni tiket po svakom uspesnom refresh-u. UI
+                        // countdown LaunchedEffect je keyed na ovo (ne na `code`) —
+                        // svaki poll donosi svez secondsLeft pa se countdown PONOVO
+                        // pokrene. Ranije (key=code) countdown bi zamrznuo na 0 jer
+                        // se isti kod ne menja izmedju poll-ova.
+                        refreshTick = it.refreshTick + 1
                     )
                 }
                 is ApiResult.Failure -> _state.update {
@@ -65,5 +71,7 @@ data class OtpState(
     val attempts: Int? = null,
     val maxAttempts: Int? = null,
     val message: String? = null,
-    val error: String? = null
+    val error: String? = null,
+    /** Monotoni brojac uspesnih refresh-eva; UI countdown se restartuje na svaku promenu. */
+    val refreshTick: Int = 0
 )

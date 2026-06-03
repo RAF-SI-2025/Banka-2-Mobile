@@ -12,6 +12,7 @@ import rs.raf.banka2.mobile.data.dto.card.CardRequestResponseDto
 import rs.raf.banka2.mobile.data.dto.card.CardTopUpRequest
 import rs.raf.banka2.mobile.data.dto.card.CardWithdrawRequest
 import java.math.BigDecimal
+import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -36,13 +37,18 @@ class CardRepository @Inject constructor(
 
     /**
      * ME-03: top-up INTERNET_PREPAID kartice.
+     *
+     * P1-idempotency-1 (R5-1849): Idempotency-Key (UUID po pozivu) → BE deduplikuje
+     * transport-level retry/double-submit i ne prebaci sredstva dvaput.
+     * `idempotencyKey` se moze proslediti spolja (stabilan po submit-u); default svez UUID.
      */
     suspend fun topUp(
         cardId: Long,
         sourceAccountId: Long,
-        amount: BigDecimal
+        amount: BigDecimal,
+        idempotencyKey: String = UUID.randomUUID().toString()
     ): ApiResult<CardDto> =
-        safeApiCall { api.topUpCard(cardId, CardTopUpRequest(sourceAccountId, amount)) }
+        safeApiCall { api.topUpCard(cardId, CardTopUpRequest(sourceAccountId, amount), idempotencyKey) }
 
     /**
      * ME-03: povlacenje sa INTERNET_PREPAID kartice na Account.
@@ -50,9 +56,10 @@ class CardRepository @Inject constructor(
     suspend fun withdrawFromCard(
         cardId: Long,
         targetAccountId: Long,
-        amount: BigDecimal
+        amount: BigDecimal,
+        idempotencyKey: String = UUID.randomUUID().toString()
     ): ApiResult<CardDto> =
-        safeApiCall { api.withdrawFromCard(cardId, CardWithdrawRequest(targetAccountId, amount)) }
+        safeApiCall { api.withdrawFromCard(cardId, CardWithdrawRequest(targetAccountId, amount), idempotencyKey) }
 
     /**
      * ME-03: submit prosiren sa cardCategory i creditLimit (opciono za CREDIT karticu).
@@ -80,9 +87,6 @@ class CardRepository @Inject constructor(
         safeApiCall {
             api.confirmCardRequest(id, rs.raf.banka2.mobile.data.dto.payment.OtpVerifyRequest(otpCode))
         }
-
-    suspend fun myRequests(): ApiResult<List<CardRequestResponseDto>> =
-        safeApiCall { api.getMyCardRequests() }.map { it.content }
 
     suspend fun listAllRequests(status: String? = null): ApiResult<List<CardRequestResponseDto>> =
         safeApiCall { api.listAllCardRequests(status = status) }.map { it.content }

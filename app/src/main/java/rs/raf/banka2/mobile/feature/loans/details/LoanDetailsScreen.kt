@@ -33,6 +33,7 @@ import rs.raf.banka2.mobile.core.ui.components.BankaScaffold
 import rs.raf.banka2.mobile.core.ui.components.ErrorBanner
 import rs.raf.banka2.mobile.core.ui.components.GlassCard
 import rs.raf.banka2.mobile.core.ui.components.SecondaryButton
+import rs.raf.banka2.mobile.core.ui.components.VerificationModal
 import rs.raf.banka2.mobile.data.dto.loan.LoanDto
 
 @Composable
@@ -73,7 +74,7 @@ fun LoanDetailsScreen(
                 item {
                     SecondaryButton(
                         text = if (state.submitting) "Saljem..." else "Prevremena otplata",
-                        onClick = viewModel::earlyRepay,
+                        onClick = viewModel::requestEarlyRepay,
                         loading = state.submitting,
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -105,6 +106,15 @@ fun LoanDetailsScreen(
                 }
             }
         }
+
+        // P1-mobile-banking-1 (R1-263): OTP modal za prevremenu otplatu (BE-PAY-06).
+        VerificationModal(
+            visible = state.showVerification,
+            onDismiss = viewModel::closeVerification,
+            onSubmit = viewModel::earlyRepayWithOtp,
+            isVerifying = state.submitting,
+            externalError = state.error
+        )
     }
 }
 

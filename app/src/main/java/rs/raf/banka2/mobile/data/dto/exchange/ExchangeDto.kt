@@ -1,16 +1,17 @@
 package rs.raf.banka2.mobile.data.dto.exchange
 
 import com.squareup.moshi.JsonClass
+import java.math.BigDecimal
 
 @JsonClass(generateAdapter = true)
 data class ExchangeRateDto(
     val currency: String? = null,
     val fromCurrency: String? = null,
     val toCurrency: String? = null,
-    val rate: Double? = null,
-    val buyRate: Double? = null,
-    val sellRate: Double? = null,
-    val middleRate: Double? = null,
+    val rate: BigDecimal? = null,
+    val buyRate: BigDecimal? = null,
+    val sellRate: BigDecimal? = null,
+    val middleRate: BigDecimal? = null,
     val date: String? = null,
     val lastUpdated: String? = null
 )
@@ -19,11 +20,11 @@ data class ExchangeRateDto(
 data class CalculateExchangeResponseDto(
     val fromCurrency: String,
     val toCurrency: String,
-    val amount: Double,
-    val convertedAmount: Double,
-    val rate: Double? = null,
-    val exchangeRate: Double? = null,
-    val fee: Double? = null
+    val amount: BigDecimal,
+    val convertedAmount: BigDecimal,
+    val rate: BigDecimal? = null,
+    val exchangeRate: BigDecimal? = null,
+    val fee: BigDecimal? = null
 )
 
 /**
@@ -36,5 +37,5 @@ data class CalculateExchangeResponseDto(
 data class ExchangeHistoryPointDto(
     val date: String,
     /** Srednji kurs na taj dan (RSD baza, kompatibilno sa ExchangeRateDto.middleRate). */
-    val rate: Double
+    val rate: BigDecimal
 )

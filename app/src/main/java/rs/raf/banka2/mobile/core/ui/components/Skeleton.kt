@@ -7,8 +7,6 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -16,7 +14,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -64,19 +61,3 @@ fun ShimmerLine(
 ) {
     ShimmerBox(modifier = modifier.fillMaxWidth().height(height), cornerRadius = height / 2)
 }
-
-@Composable
-fun ShimmerCircle(
-    modifier: Modifier = Modifier,
-    size: Dp = 40.dp
-) {
-    val base = MaterialTheme.colorScheme.surfaceContainerHigh
-    androidx.compose.foundation.layout.Box(
-        modifier = modifier
-            .size(size)
-            .clip(CircleShape)
-            .background(base.copy(alpha = 0.6f))
-    )
-}
-
-internal val ShimmerNoOp: Color = Color.Transparent

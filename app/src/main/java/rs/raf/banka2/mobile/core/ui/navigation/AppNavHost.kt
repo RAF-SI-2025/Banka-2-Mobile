@@ -246,13 +246,18 @@ private fun androidx.navigation.NavGraphBuilder.addClientRoutes(
     composable<Routes.SavingsDetails> {
         SavingsDetailsScreen(onBack = { navController.popBackStack() })
     }
+    // P1-fe-mobile-authz-1 (1755/1388): marzni racuni su trgovinski feature — NO_AGENT.
     composable<Routes.MarginAccounts> {
-        MarginScreen(
-            onBack = { navController.popBackStack() }
-        )
+        RouteGuard(RouteAccess.NO_AGENT) {
+            MarginScreen(
+                onBack = { navController.popBackStack() }
+            )
+        }
     }
     composable<Routes.MarginTransactionsRoute> {
-        MarginTransactionsScreen(onBack = { navController.popBackStack() })
+        RouteGuard(RouteAccess.NO_AGENT) {
+            MarginTransactionsScreen(onBack = { navController.popBackStack() })
+        }
     }
     composable<Routes.Otp> { OtpScreen(onBack = { navController.popBackStack() }) }
 
@@ -264,7 +269,7 @@ private fun androidx.navigation.NavGraphBuilder.addClientRoutes(
         )
     }
 
-    // TODO_final Mobile bonus #7 — Quick Approve placeholder.
+    // TODO_final Mobile bonus #7 — Quick Approve ekran (pun produkcioni UI).
     composable<Routes.QuickApprovePayment> {
         QuickApproveScreen(onBack = { navController.popBackStack() })
     }
@@ -303,6 +308,8 @@ private fun NavHostController.handleNotificationTarget(target: NotificationTarge
         NotificationTarget.Cards -> navigate(Routes.Cards)
         NotificationTarget.Loans -> navigate(Routes.Loans)
         NotificationTarget.Accounts -> navigate(Routes.AccountsList)
+        NotificationTarget.RecurringOrders -> navigate(Routes.RecurringOrders)
+        NotificationTarget.PriceAlerts -> navigate(Routes.PriceAlerts)
         is NotificationTarget.QuickApprovePayment -> navigate(
             Routes.QuickApprovePayment(
                 paymentId = target.paymentId,
@@ -313,125 +320,194 @@ private fun NavHostController.handleNotificationTarget(target: NotificationTarge
 }
 
 private fun androidx.navigation.NavGraphBuilder.addTradingRoutes(navController: NavHostController) {
+    // P1-fe-mobile-authz-1 (1755): trgovinske rute su NO_AGENT (agent nema
+    // berzanski pristup), a kreiranje naloga je TRADE (admin/supervizor ili
+    // klijent sa TRADE_STOCKS). RouteGuard montira ekran samo ako sesija ima
+    // dozvoljenu rolu — inace placeholder "nemate pristup" (fail-closed).
     composable<Routes.SecuritiesList> {
-        SecuritiesListScreen(
-            onBack = { navController.popBackStack() },
-            onListingClick = { listingId -> navController.navigate(Routes.SecuritiesDetails(listingId)) }
-        )
+        RouteGuard(RouteAccess.NO_AGENT) {
+            SecuritiesListScreen(
+                onBack = { navController.popBackStack() },
+                onListingClick = { listingId -> navController.navigate(Routes.SecuritiesDetails(listingId)) }
+            )
+        }
     }
     composable<Routes.SecuritiesDetails> {
-        SecuritiesDetailsScreen(
-            onBack = { navController.popBackStack() },
-            onOrder = { id, direction -> navController.navigate(Routes.CreateOrder(id, direction)) }
-        )
+        RouteGuard(RouteAccess.NO_AGENT) {
+            SecuritiesDetailsScreen(
+                onBack = { navController.popBackStack() },
+                onOrder = { id, direction -> navController.navigate(Routes.CreateOrder(id, direction)) }
+            )
+        }
     }
     composable<Routes.CreateOrder> {
-        CreateOrderScreen(
-            onBack = { navController.popBackStack() },
-            onSuccess = {
-                navController.navigate(Routes.MyOrders) {
-                    popUpTo(Routes.SecuritiesList) { inclusive = false }
+        RouteGuard(RouteAccess.TRADE) {
+            CreateOrderScreen(
+                onBack = { navController.popBackStack() },
+                onSuccess = {
+                    navController.navigate(Routes.MyOrders) {
+                        popUpTo(Routes.SecuritiesList) { inclusive = false }
+                    }
                 }
-            }
-        )
+            )
+        }
     }
-    composable<Routes.MyOrders> { MyOrdersScreen(onBack = { navController.popBackStack() }) }
+    composable<Routes.MyOrders> {
+        RouteGuard(RouteAccess.NO_AGENT) {
+            MyOrdersScreen(onBack = { navController.popBackStack() })
+        }
+    }
     composable<Routes.Portfolio> {
-        PortfolioScreen(
-            onBack = { navController.popBackStack() },
-            onSell = { listingId -> navController.navigate(Routes.CreateOrder(listingId, "SELL")) }
-        )
+        RouteGuard(RouteAccess.NO_AGENT) {
+            PortfolioScreen(
+                onBack = { navController.popBackStack() },
+                onSell = { listingId -> navController.navigate(Routes.CreateOrder(listingId, "SELL")) }
+            )
+        }
     }
 }
 
 private fun androidx.navigation.NavGraphBuilder.addEmployeeRoutes(navController: NavHostController) {
-    composable<Routes.EmployeeOrders> { OrdersSupervisorScreen(onBack = { navController.popBackStack() }) }
-    composable<Routes.Actuaries> { ActuariesScreen(onBack = { navController.popBackStack() }) }
-    composable<Routes.TaxPortal> { TaxScreen(onBack = { navController.popBackStack() }) }
-    composable<Routes.ExchangesManagement> { ExchangesScreen(onBack = { navController.popBackStack() }) }
-    composable<Routes.ProfitBank> { ProfitBankScreen(onBack = { navController.popBackStack() }) }
+    // P1-fe-mobile-authz-1 (1755): svaki employee/supervisor/admin ekran je
+    // RouteGuard-ovan po roli (fail-closed). Ranije su sve rute bile globalno
+    // registrovane bez provere → deep-link/notif-target je montirao tudji ekran.
+    // SUPERVISOR-only: Orderi/Aktuari/Porez/ProfitBank/Dashboard/Audit/OTC-istorija.
+    composable<Routes.EmployeeOrders> {
+        RouteGuard(RouteAccess.SUPERVISOR) { OrdersSupervisorScreen(onBack = { navController.popBackStack() }) }
+    }
+    composable<Routes.Actuaries> {
+        RouteGuard(RouteAccess.SUPERVISOR) { ActuariesScreen(onBack = { navController.popBackStack() }) }
+    }
+    composable<Routes.TaxPortal> {
+        RouteGuard(RouteAccess.SUPERVISOR) { TaxScreen(onBack = { navController.popBackStack() }) }
+    }
+    composable<Routes.ExchangesManagement> {
+        RouteGuard(RouteAccess.EMPLOYEE) { ExchangesScreen(onBack = { navController.popBackStack() }) }
+    }
+    composable<Routes.ProfitBank> {
+        RouteGuard(RouteAccess.SUPERVISOR) { ProfitBankScreen(onBack = { navController.popBackStack() }) }
+    }
 
     composable<Routes.SupervisorDashboard> {
-        SupervisorDashboardScreen(onBack = { navController.popBackStack() })
+        RouteGuard(RouteAccess.SUPERVISOR) {
+            SupervisorDashboardScreen(onBack = { navController.popBackStack() })
+        }
     }
     composable<Routes.EmployeesList> {
-        EmployeeListScreen(
-            onBack = { navController.popBackStack() },
-            onEmployeeClick = { id -> navController.navigate(Routes.EmployeeEdit(id)) },
-            onCreateNew = { navController.navigate(Routes.EmployeeNew) }
-        )
+        RouteGuard(RouteAccess.ADMIN) {
+            EmployeeListScreen(
+                onBack = { navController.popBackStack() },
+                onEmployeeClick = { id -> navController.navigate(Routes.EmployeeEdit(id)) },
+                onCreateNew = { navController.navigate(Routes.EmployeeNew) }
+            )
+        }
     }
     composable<Routes.EmployeeNew> {
-        EmployeeCreateScreen(
-            onBack = { navController.popBackStack() },
-            onCreated = { navController.popBackStack() }
-        )
+        RouteGuard(RouteAccess.ADMIN) {
+            EmployeeCreateScreen(
+                onBack = { navController.popBackStack() },
+                onCreated = { navController.popBackStack() }
+            )
+        }
     }
     composable<Routes.EmployeeEdit> {
-        EmployeeEditScreen(onBack = { navController.popBackStack() })
+        RouteGuard(RouteAccess.ADMIN) {
+            EmployeeEditScreen(onBack = { navController.popBackStack() })
+        }
     }
     composable<Routes.EmployeeClientsPortal> {
-        ClientsPortalScreen(
-            onBack = { navController.popBackStack() },
-            onClientClick = { id -> navController.navigate(Routes.ClientEditRoute(id)) }
-        )
+        RouteGuard(RouteAccess.EMPLOYEE) {
+            ClientsPortalScreen(
+                onBack = { navController.popBackStack() },
+                onClientClick = { id -> navController.navigate(Routes.ClientEditRoute(id)) }
+            )
+        }
     }
     composable<Routes.ClientEditRoute> {
-        ClientEditScreen(onBack = { navController.popBackStack() })
+        RouteGuard(RouteAccess.EMPLOYEE) {
+            ClientEditScreen(onBack = { navController.popBackStack() })
+        }
     }
     composable<Routes.EmployeeAccountsPortal> {
-        AllAccountsScreen(
-            onBack = { navController.popBackStack() },
-            onCreateNew = { navController.navigate(Routes.EmployeeAccountCreate) },
-            onAccountClick = { id -> navController.navigate(Routes.EmployeeAccountCardsList(id)) }
-        )
+        RouteGuard(RouteAccess.EMPLOYEE) {
+            AllAccountsScreen(
+                onBack = { navController.popBackStack() },
+                onCreateNew = { navController.navigate(Routes.EmployeeAccountCreate) },
+                onAccountClick = { id -> navController.navigate(Routes.EmployeeAccountCardsList(id)) }
+            )
+        }
     }
     composable<Routes.EmployeeAccountCreate> {
-        CreateAccountForClientScreen(
-            onBack = { navController.popBackStack() },
-            onCreated = { navController.popBackStack() }
-        )
+        RouteGuard(RouteAccess.EMPLOYEE) {
+            CreateAccountForClientScreen(
+                onBack = { navController.popBackStack() },
+                onCreated = { navController.popBackStack() }
+            )
+        }
     }
     composable<Routes.EmployeeAccountCardsList> {
-        AccountCardsScreen(onBack = { navController.popBackStack() })
+        RouteGuard(RouteAccess.EMPLOYEE) {
+            AccountCardsScreen(onBack = { navController.popBackStack() })
+        }
     }
     composable<Routes.EmployeeCardRequests> {
-        CardRequestsScreen(onBack = { navController.popBackStack() })
+        RouteGuard(RouteAccess.EMPLOYEE) {
+            CardRequestsScreen(onBack = { navController.popBackStack() })
+        }
     }
     composable<Routes.EmployeeAccountRequests> {
-        AccountRequestsScreen(onBack = { navController.popBackStack() })
+        RouteGuard(RouteAccess.EMPLOYEE) {
+            AccountRequestsScreen(onBack = { navController.popBackStack() })
+        }
     }
     composable<Routes.EmployeeLoanRequests> {
-        LoanRequestsScreen(onBack = { navController.popBackStack() })
+        RouteGuard(RouteAccess.EMPLOYEE) {
+            LoanRequestsScreen(onBack = { navController.popBackStack() })
+        }
     }
     composable<Routes.EmployeeAllLoans> {
-        AllLoansScreen(onBack = { navController.popBackStack() })
+        RouteGuard(RouteAccess.EMPLOYEE) {
+            AllLoansScreen(onBack = { navController.popBackStack() })
+        }
     }
     composable<Routes.MarginAccountCreate> {
-        CreateMarginScreen(
-            onBack = { navController.popBackStack() },
-            onCreated = { navController.popBackStack() }
-        )
+        RouteGuard(RouteAccess.EMPLOYEE) {
+            CreateMarginScreen(
+                onBack = { navController.popBackStack() },
+                onCreated = { navController.popBackStack() }
+            )
+        }
     }
     // B7 / Spec C3 §69 — Audit log portal (supervisor/admin only).
     composable<Routes.AuditLog> {
-        AuditLogScreen(onBack = { navController.popBackStack() })
+        RouteGuard(RouteAccess.SUPERVISOR) {
+            AuditLogScreen(onBack = { navController.popBackStack() })
+        }
     }
     // B10 / Spec C4 §13 — OTC istorija pregovora (supervisor/admin only).
     composable<Routes.OtcNegotiationHistory> {
-        OtcNegotiationHistoryScreen(onBack = { navController.popBackStack() })
+        RouteGuard(RouteAccess.SUPERVISOR) {
+            OtcNegotiationHistoryScreen(onBack = { navController.popBackStack() })
+        }
     }
 }
 
 private fun androidx.navigation.NavGraphBuilder.addOtcAndFundsRoutes(navController: NavHostController) {
+    // P1-fe-mobile-authz-1 (1755): OTC tok je NO_AGENT (§137-141). Fond
+    // discovery/details/MyFunds su za SVE role (discovery & details), pa nisu
+    // guard-ovani; kreiranje fonda je SUPERVISOR-only.
     composable<Routes.OtcDiscovery> {
-        OtcDiscoveryScreen(
-            onBack = { navController.popBackStack() },
-            onOpenOffersAndContracts = { navController.navigate(Routes.OtcOffersAndContracts) }
-        )
+        RouteGuard(RouteAccess.NO_AGENT) {
+            OtcDiscoveryScreen(
+                onBack = { navController.popBackStack() },
+                onOpenOffersAndContracts = { navController.navigate(Routes.OtcOffersAndContracts) }
+            )
+        }
     }
     composable<Routes.OtcOffersAndContracts> {
-        OtcOffersAndContractsScreen(onBack = { navController.popBackStack() })
+        RouteGuard(RouteAccess.NO_AGENT) {
+            OtcOffersAndContractsScreen(onBack = { navController.popBackStack() })
+        }
     }
     composable<Routes.FundsList> {
         FundsDiscoveryScreen(
@@ -445,14 +521,16 @@ private fun androidx.navigation.NavGraphBuilder.addOtcAndFundsRoutes(navControll
         FundDetailsScreen(onBack = { navController.popBackStack() })
     }
     composable<Routes.FundCreate> {
-        CreateFundScreen(
-            onBack = { navController.popBackStack() },
-            onCreated = { id ->
-                navController.navigate(Routes.FundDetails(id)) {
-                    popUpTo(Routes.FundCreate) { inclusive = true }
+        RouteGuard(RouteAccess.SUPERVISOR) {
+            CreateFundScreen(
+                onBack = { navController.popBackStack() },
+                onCreated = { id ->
+                    navController.navigate(Routes.FundDetails(id)) {
+                        popUpTo(Routes.FundCreate) { inclusive = true }
+                    }
                 }
-            }
-        )
+            )
+        }
     }
     composable<Routes.MyFunds> {
         MyFundsScreen(

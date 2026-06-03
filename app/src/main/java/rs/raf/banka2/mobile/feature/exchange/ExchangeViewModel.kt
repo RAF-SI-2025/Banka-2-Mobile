@@ -3,6 +3,7 @@ package rs.raf.banka2.mobile.feature.exchange
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -23,6 +24,10 @@ class ExchangeViewModel @Inject constructor(
 
     private val _state = MutableStateFlow(ExchangeState())
     val state: StateFlow<ExchangeState> = _state.asStateFlow()
+
+    // R1-582: drzimo referencu na poslednji recalc-job kako bismo otkazali
+    // zastareli poziv pre nego sto izdamo novi (latest-wins).
+    private var recalcJob: Job? = null
 
     init { refresh() }
 
@@ -54,7 +59,17 @@ class ExchangeViewModel @Inject constructor(
         val current = _state.value
         val parsed = MoneyFormatter.parse(current.amount) ?: return
         if (current.fromCurrency.isBlank() || current.toCurrency.isBlank()) return
-        viewModelScope.launch {
+        // R1-369: ista valuta (npr. RSD→RSD) nije konverzija — prikazi 1:1
+        // bez round-trip-a ka BE-u (koji bi vratio 400/besmislen kurs).
+        if (current.fromCurrency.equals(current.toCurrency, ignoreCase = true)) {
+            recalcJob?.cancel()
+            _state.update { it.copy(calculation = null, error = null) }
+            return
+        }
+        // R1-582: otkazi prethodni recalc da out-of-order odgovor ne pregazi
+        // najnoviji kurs/iznos (korisnik brzo kuca → vise letecih poziva).
+        recalcJob?.cancel()
+        recalcJob = viewModelScope.launch {
             when (val result = repository.calculate(parsed, current.fromCurrency, current.toCurrency)) {
                 is ApiResult.Success -> _state.update { it.copy(calculation = result.data) }
                 is ApiResult.Failure -> _state.update { it.copy(error = result.error.message) }

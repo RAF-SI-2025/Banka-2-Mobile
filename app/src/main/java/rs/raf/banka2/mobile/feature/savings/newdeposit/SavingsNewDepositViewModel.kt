@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import rs.raf.banka2.mobile.core.format.MoneyFormatter
 import rs.raf.banka2.mobile.core.network.ApiResult
 import rs.raf.banka2.mobile.data.dto.account.AccountDto
 import rs.raf.banka2.mobile.data.dto.savings.OpenDepositRequest
@@ -48,7 +49,10 @@ class SavingsNewDepositViewModel @Inject constructor(
     fun setPrincipal(amount: BigDecimal) = _state.update { it.copy(principalAmount = amount) }
 
     fun setPrincipalText(text: String) {
-        val parsed = text.toBigDecimalOrNull() ?: BigDecimal.ZERO
+        // P1-mobile-banking-1 (R7-2027): srpski zarez ("250.000,00") nije validan za
+        // Kotlin `toBigDecimalOrNull()` → glavnica se tiho gubila (→ ZERO) i depozit
+        // bi isao sa nula glavnicom / pao na min-iznos validaciji. sr-RS svestan parser.
+        val parsed = MoneyFormatter.parseBigDecimal(text) ?: BigDecimal.ZERO
         _state.update { it.copy(principalAmount = parsed) }
     }
 

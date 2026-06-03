@@ -45,9 +45,26 @@ inline fun <T> ApiResult<T>.onFailure(block: (ApiError) -> Unit): ApiResult<T> {
 /**
  * Lift `ApiResult<T>` na `ApiResult<R>` cuvajuci Failure/Loading granu.
  * Koristi se kada repository zeli da skrati API odgovor (npr. PageResponse → List).
+ *
+ * R1-584: `safeApiCall` za 200 sa praznim telom vraca `Success(Unit as T)`
+ * (legitimno za `Response<Unit>` endpoint-e). Ako BE prekrsi kontrakt i vrati
+ * prazno telo na tipiziranom endpoint-u, `data` je zapravo `Unit` pa
+ * `transform(Unit)` (npr. `{ it.content }`) baca `ClassCastException`. Ranije
+ * je to rusilo aplikaciju; sad hvatamo i konvertujemo u smislen Failure.
  */
 inline fun <T, R> ApiResult<T>.map(transform: (T) -> R): ApiResult<R> = when (this) {
-    is ApiResult.Success -> ApiResult.Success(transform(data))
+    is ApiResult.Success -> try {
+        ApiResult.Success(transform(data))
+    } catch (e: ClassCastException) {
+        ApiResult.Failure(
+            ApiError(
+                httpCode = null,
+                message = "Server je vratio prazan odgovor.",
+                kind = ApiError.Kind.Server,
+                cause = e
+            )
+        )
+    }
     is ApiResult.Failure -> this
     ApiResult.Loading -> ApiResult.Loading
 }

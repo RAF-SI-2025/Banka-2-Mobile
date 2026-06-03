@@ -43,6 +43,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import rs.raf.banka2.mobile.BuildConfig
 import rs.raf.banka2.mobile.core.auth.TotpHelpers
 import rs.raf.banka2.mobile.core.network.ApiResult
 import rs.raf.banka2.mobile.data.repository.PaymentRepository
@@ -199,23 +200,14 @@ fun VerificationModal(
                 }
 
                 Spacer(Modifier.height(8.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "Preostalo vreme: ${formatSeconds(state.secondsLeft)}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        text = "Pokusaja: ${state.attemptsRemaining}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
+                // R1 866: uklonjen staticki "Pokusaja: N" prikaz — brojac se nikad
+                // nije dekrementirao (dijalog ne verifikuje sam; parent salje OTP),
+                // pa je uvek pokazivao "3" i lazno sugerisao odbrojavanje pokusaja.
+                Text(
+                    text = "Preostalo vreme: ${formatSeconds(state.secondsLeft)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
                 Spacer(Modifier.height(8.dp))
                 TextButton(
                     onClick = { scope.launch { viewModel.requestEmailOtp() } },
@@ -272,7 +264,12 @@ class VerificationViewModel @Inject constructor(
                 requestingEmail = false
             )
         }
-        viewModelScope.launch { fetchActiveCode() }
+        // R1-580: "Aktivan kod" auto-fill (server-side dev/test OTP) je dev-only.
+        // U release build-u NIKAD ne dohvatamo niti prikazujemo aktivni TOTP/OTP
+        // kod — to bi efektivno zaobislo 2FA. Iza BuildConfig.DEBUG flag-a.
+        if (BuildConfig.DEBUG) {
+            viewModelScope.launch { fetchActiveCode() }
+        }
         viewModelScope.launch { paymentRepository.requestOtpToMobile() }
     }
 
@@ -288,9 +285,10 @@ class VerificationViewModel @Inject constructor(
     fun setLocalError(message: String) =
         _state.update { it.copy(localError = message) }
 
-    fun decrementAttempts() = _state.update {
-        it.copy(attemptsRemaining = (it.attemptsRemaining - 1).coerceAtLeast(0))
-    }
+    // R1 866: `decrementAttempts()` uklonjen — bio je bez ijednog callera (dijalog
+    // ne verifikuje OTP sam, parent salje kod u svoj API poziv pa nema mesta gde
+    // bi se brojac dekrementirao). `attemptsRemaining` ostaje kao guard confirm
+    // dugmeta (uvek 3 > 0 dok je dijalog otvoren).
 
     fun fillFromActiveCode() {
         val code = _state.value.devCode ?: return

@@ -38,11 +38,19 @@ class LoanDetailsViewModel @Inject constructor(
         viewModelScope.launch { fetchInstallments() }
     }
 
-    fun earlyRepay() = viewModelScope.launch {
+    /**
+     * P1-mobile-banking-1 (R1-263): prevremena otplata je OTP-gated (BE-PAY-06).
+     * Otvori VerificationModal; stvarni poziv ide kroz [earlyRepayWithOtp].
+     */
+    fun requestEarlyRepay() = _state.update { it.copy(showVerification = true, error = null) }
+
+    fun closeVerification() = _state.update { it.copy(showVerification = false) }
+
+    fun earlyRepayWithOtp(code: String) = viewModelScope.launch {
         _state.update { it.copy(submitting = true) }
-        when (val result = repository.earlyRepay(loanId)) {
+        when (val result = repository.earlyRepay(loanId, code)) {
             is ApiResult.Success -> {
-                _state.update { it.copy(submitting = false, loan = result.data) }
+                _state.update { it.copy(submitting = false, showVerification = false, loan = result.data) }
                 _events.send(LoanDetailsEvent.Toast("Prevremena otplata zatrazena."))
                 fetchInstallments()
             }
@@ -77,6 +85,7 @@ data class LoanDetailsState(
     val loan: LoanDto? = null,
     val installments: List<LoanInstallmentDto> = emptyList(),
     val submitting: Boolean = false,
+    val showVerification: Boolean = false,
     val error: String? = null
 )
 

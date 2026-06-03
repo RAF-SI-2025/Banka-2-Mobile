@@ -1,5 +1,6 @@
 package rs.raf.banka2.mobile.data.dto.notification
 
+import com.squareup.moshi.Json
 import com.squareup.moshi.JsonClass
 
 /**
@@ -10,21 +11,33 @@ import com.squareup.moshi.JsonClass
  * [NotificationType] string konstante i radimo deep-link preko
  * `relatedEntityType`/`relatedEntityId`.
  *
- * Reference: `Banka-2-Frontend/src/types/notification.ts`.
+ * KONTRAKT (P0-M1 N1): BE `NotificationDto` (banka-core
+ * `rs.raf.banka2_bek.notification.dto.NotificationDto`) salje telo poruke kao
+ * `body` (NE `message`) i referencu kao `referenceType`/`referenceId`
+ * (NE `relatedEntityType`/`relatedEntityId`). Stara Moshi mapa je bacala na
+ * SVAKI red (non-null `message` koje BE nikad ne salje) → cela lista je UVEK
+ * pucala. Zadrzavamo Kotlin imena polja koja ostatak koda cita
+ * (`message`/`relatedEntity*`) ali ih vezujemo za BE JSON imena preko
+ * [Json] aliasa; `message` je nullable da nedostajuci/null `body` ne pukne.
+ *
+ * Reference: `Banka-2-Frontend/src/types/notification.ts`,
+ * `banka2_bek/.../notification/dto/NotificationDto.java`.
  */
 @JsonClass(generateAdapter = true)
 data class NotificationDto(
     val id: Long,
-    /** Vrednost iz [NotificationType.ALL] — fallback je [NotificationType.GENERIC]. */
+    /** Vrednost iz [NotificationType.ALL] — fallback je [NotificationType.GENERAL]. */
     val type: String,
     val title: String,
-    val message: String,
+    /** BE polje `body`. Nullable jer BE moze poslati null telo. */
+    @param:Json(name = "body") val message: String? = null,
     val read: Boolean,
     /** ISO 8601 timestamp. */
     val createdAt: String,
-    /** PAYMENT / ORDER / OTC_OFFER / OTC_CONTRACT / FUND / LOAN / CARD / ACCOUNT */
-    val relatedEntityType: String? = null,
-    val relatedEntityId: Long? = null
+    /** BE `referenceType`: PAYMENT / ORDER / OTC_OFFER / OTC_CONTRACT / FUND / LOAN / CARD / ACCOUNT */
+    @param:Json(name = "referenceType") val relatedEntityType: String? = null,
+    /** BE `referenceId`. */
+    @param:Json(name = "referenceId") val relatedEntityId: Long? = null
 )
 
 @JsonClass(generateAdapter = true)
@@ -48,9 +61,14 @@ data class UnreadCountDto(
  * iz BE-a (forward compat).
  */
 object NotificationType {
-    const val PAYMENT_RECEIVED = "PAYMENT_RECEIVED"
-    const val PAYMENT_SENT = "PAYMENT_SENT"
-    const val PAYMENT_PENDING_APPROVAL = "PAYMENT_PENDING_APPROVAL"
+    // P1-mobile-banking-1 (R1-151 Mobile deo): vrednosti uskladjene 1:1 sa STVARNIM
+    // BE enum-om (`banka2_bek` + `trading-service` `NotificationType.java`) — paritet sa
+    // FE web `notification.ts`. Stari spisak je imao izmisljena imena (`PAYMENT_RECEIVED`/
+    // `ORDER_FILLED`/`OTC_OFFER_*`/`FUND_*`/`MARGIN_ACCOUNT_BLOCKED`/`GENERIC`...) kojih
+    // nema u BE enum-u → labela/ikona se nikad nije razresavala. Fallback je `GENERAL`.
+    const val PAYMENT = "PAYMENT"
+    const val TRANSFER = "TRANSFER"
+    const val LIMIT_CHANGE = "LIMIT_CHANGE"
 
     const val ORDER_PENDING = "ORDER_PENDING"
     const val ORDER_APPROVED = "ORDER_APPROVED"
@@ -58,105 +76,79 @@ object NotificationType {
     const val ORDER_EXECUTED = "ORDER_EXECUTED"
     const val ORDER_PARTIAL_FILL = "ORDER_PARTIAL_FILL"
     const val ORDER_CANCELLED = "ORDER_CANCELLED"
-    const val ORDER_FILLED = "ORDER_FILLED"
 
-    const val OTC_OFFER_RECEIVED = "OTC_OFFER_RECEIVED"
     const val OTC_COUNTER_OFFER = "OTC_COUNTER_OFFER"
     const val OTC_ACCEPTED = "OTC_ACCEPTED"
     const val OTC_DECLINED = "OTC_DECLINED"
-    const val OTC_OFFER_ACCEPTED = "OTC_OFFER_ACCEPTED"
-    const val OTC_OFFER_DECLINED = "OTC_OFFER_DECLINED"
     const val OTC_CONTRACT_EXPIRING = "OTC_CONTRACT_EXPIRING"
-    const val OTC_CONTRACT_EXERCISED = "OTC_CONTRACT_EXERCISED"
-    const val OTC_CONTRACT_EXPIRED = "OTC_CONTRACT_EXPIRED"
 
-    const val FUND_INTEREST_PAID = "FUND_INTEREST_PAID"
-    const val FUND_DEPOSIT_MATURED = "FUND_DEPOSIT_MATURED"
-
+    const val LOAN_CREATED = "LOAN_CREATED"
     const val LOAN_APPROVED = "LOAN_APPROVED"
-    const val LOAN_DECLINED = "LOAN_DECLINED"
-    const val LOAN_PAYMENT_DUE = "LOAN_PAYMENT_DUE"
+    const val LOAN_REJECTED = "LOAN_REJECTED"
 
     const val CARD_BLOCKED = "CARD_BLOCKED"
     const val CARD_UNBLOCKED = "CARD_UNBLOCKED"
 
     const val ACCOUNT_LOCKED = "ACCOUNT_LOCKED"
-    const val MARGIN_ACCOUNT_BLOCKED = "MARGIN_ACCOUNT_BLOCKED"
 
     const val PRICE_ALERT_TRIGGERED = "PRICE_ALERT_TRIGGERED"
     const val RECURRING_ORDER_SKIPPED = "RECURRING_ORDER_SKIPPED"
 
+    /** BE fallback tip — koristi se i kao default za nepoznate vrednosti. */
     const val GENERAL = "GENERAL"
-    const val GENERIC = "GENERIC"
-    const val TRANSFER = "TRANSFER"
-
-    /** Default fallback za nepoznate BE vrednosti. */
-    const val UNKNOWN = "UNKNOWN"
 
     /** Sve poznate vrednosti — koristi se u testovima i UI helper-ima. */
     val ALL: Set<String> = setOf(
-        PAYMENT_RECEIVED, PAYMENT_SENT, PAYMENT_PENDING_APPROVAL,
+        PAYMENT, TRANSFER, LIMIT_CHANGE,
         ORDER_PENDING, ORDER_APPROVED, ORDER_DECLINED, ORDER_EXECUTED,
-        ORDER_PARTIAL_FILL, ORDER_CANCELLED, ORDER_FILLED,
-        OTC_OFFER_RECEIVED, OTC_COUNTER_OFFER, OTC_ACCEPTED, OTC_DECLINED,
-        OTC_OFFER_ACCEPTED, OTC_OFFER_DECLINED,
-        OTC_CONTRACT_EXPIRING, OTC_CONTRACT_EXERCISED, OTC_CONTRACT_EXPIRED,
-        FUND_INTEREST_PAID, FUND_DEPOSIT_MATURED,
-        LOAN_APPROVED, LOAN_DECLINED, LOAN_PAYMENT_DUE,
+        ORDER_PARTIAL_FILL, ORDER_CANCELLED,
+        OTC_COUNTER_OFFER, OTC_ACCEPTED, OTC_DECLINED, OTC_CONTRACT_EXPIRING,
+        LOAN_CREATED, LOAN_APPROVED, LOAN_REJECTED,
         CARD_BLOCKED, CARD_UNBLOCKED,
-        ACCOUNT_LOCKED, MARGIN_ACCOUNT_BLOCKED,
+        ACCOUNT_LOCKED,
         PRICE_ALERT_TRIGGERED, RECURRING_ORDER_SKIPPED,
-        GENERAL, GENERIC, TRANSFER
+        GENERAL
     )
 
     fun normalize(raw: String?): String =
-        if (raw != null && raw in ALL) raw else GENERIC
+        if (raw != null && raw in ALL) raw else GENERAL
 
     /** Mapa stringa → srpska labela. Nepoznata vrednost → "Obavestenje". */
     val LABEL_SR: Map<String, String> = mapOf(
-        PAYMENT_RECEIVED to "Primljeno placanje",
-        PAYMENT_SENT to "Poslato placanje",
-        PAYMENT_PENDING_APPROVAL to "Placanje ceka odobrenje",
-        TRANSFER to "Transfer",
-        ORDER_PENDING to "Order kreiran",
+        PAYMENT to "Placanje",
+        TRANSFER to "Prenos sredstava",
+        LIMIT_CHANGE to "Promena limita",
+        ORDER_PENDING to "Order na cekanju",
         ORDER_APPROVED to "Order odobren",
         ORDER_DECLINED to "Order odbijen",
         ORDER_EXECUTED to "Order izvrsen",
         ORDER_PARTIAL_FILL to "Order delimicno izvrsen",
         ORDER_CANCELLED to "Order otkazan",
-        ORDER_FILLED to "Order izvrsen",
-        OTC_OFFER_RECEIVED to "Primljena OTC ponuda",
-        OTC_COUNTER_OFFER to "Kontra-ponuda OTC",
+        OTC_COUNTER_OFFER to "OTC kontraponuda",
         OTC_ACCEPTED to "Prihvacena OTC ponuda",
         OTC_DECLINED to "Odbijena OTC ponuda",
-        OTC_OFFER_ACCEPTED to "Prihvacena OTC ponuda",
-        OTC_OFFER_DECLINED to "Odbijena OTC ponuda",
-        OTC_CONTRACT_EXPIRING to "OTC ugovor istice",
-        OTC_CONTRACT_EXERCISED to "OTC ugovor iskoriscen",
-        OTC_CONTRACT_EXPIRED to "OTC ugovor istekao",
-        FUND_INTEREST_PAID to "Isplacena kamata fonda",
-        FUND_DEPOSIT_MATURED to "Dospelo fond ulaganje",
+        OTC_CONTRACT_EXPIRING to "OTC ugovor uskoro istice",
+        LOAN_CREATED to "Zahtev za kredit kreiran",
         LOAN_APPROVED to "Kredit odobren",
-        LOAN_DECLINED to "Kredit odbijen",
-        LOAN_PAYMENT_DUE to "Dospela rata kredita",
+        LOAN_REJECTED to "Kredit odbijen",
         CARD_BLOCKED to "Kartica blokirana",
         CARD_UNBLOCKED to "Kartica odblokirana",
         ACCOUNT_LOCKED to "Nalog zakljucan",
-        MARGIN_ACCOUNT_BLOCKED to "Margin racun blokiran",
         PRICE_ALERT_TRIGGERED to "Cenovni alarm aktiviran",
         RECURRING_ORDER_SKIPPED to "Trajni nalog preskocen",
-        GENERAL to "Obavestenje",
-        GENERIC to "Obavestenje"
+        GENERAL to "Obavestenje"
     )
 
     fun labelOf(type: String?): String = LABEL_SR[normalize(type)] ?: "Obavestenje"
 }
 
 /**
- * Filter mode za listu notifikacija. Vrednost se salje BE-u kao
- * query param `filter` — backend prepoznaje "all" i "unread".
+ * Filter mode za listu notifikacija. Mapira se na BE query param `onlyUnread`
+ * (Boolean) u `NotificationRepository.list`: [ALL] -> null (sve), [UNREAD] -> true.
+ * R1 693/694: stari `queryValue` ("all"/"unread") string je bio mrtav — nijedan
+ * caller ga nije citao, a komentar je pogresno tvrdio da BE prima `filter=...` param.
  */
-enum class NotificationFilter(val queryValue: String) {
-    ALL("all"),
-    UNREAD("unread")
+enum class NotificationFilter {
+    ALL,
+    UNREAD
 }

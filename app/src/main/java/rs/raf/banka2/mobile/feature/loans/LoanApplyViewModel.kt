@@ -34,6 +34,7 @@ class LoanApplyViewModel @Inject constructor(
     init { viewModelScope.launch { loadAccounts() } }
 
     fun setType(value: String) = _state.update { it.copy(loanType = value.uppercase()) }
+    fun setInterestType(value: String) = _state.update { it.copy(interestType = value.uppercase()) }
     fun setAmount(value: String) = _state.update { it.copy(amount = value, error = null) }
     fun setDuration(value: String) = _state.update { it.copy(durationMonths = value.filter { ch -> ch.isDigit() }) }
     fun setPurpose(value: String) = _state.update { it.copy(purpose = value, error = null) }
@@ -80,16 +81,19 @@ class LoanApplyViewModel @Inject constructor(
         val duration = current.parsedDuration ?: return
         viewModelScope.launch {
             _state.update { it.copy(submitting = true) }
+            // P1-mobile-banking-1 (R1-131): BE `LoanRequestDto` zahteva interestType +
+            // repaymentPeriod (@NotNull) + accountNumber/currency (@NotBlank). Bez njih
+            // je apply uvek padao na 400. `employmentStatus` (poslodavac) je opciono.
             val request = LoanApplicationDto(
                 loanType = current.loanType.ifBlank { "CASH" },
+                interestType = current.interestType.ifBlank { "FIXED" },
                 amount = amount,
-                durationMonths = duration,
-                purpose = current.purpose.trim(),
-                accountId = current.account?.id,
-                accountNumber = current.account?.accountNumber,
-                currency = current.account?.currency,
+                currency = current.account?.currency.orEmpty().ifBlank { "RSD" },
+                repaymentPeriod = duration,
+                accountNumber = current.account?.accountNumber.orEmpty(),
+                loanPurpose = current.purpose.trim().takeIf { it.isNotBlank() },
                 monthlyIncome = MoneyFormatter.parseBigDecimal(current.monthlyIncome),
-                employer = current.employer.takeIf { it.isNotBlank() },
+                employmentStatus = current.employer.takeIf { it.isNotBlank() },
                 otpCode = code
             )
             when (val result = loanRepository.apply(request)) {
@@ -119,6 +123,7 @@ data class LoanApplyState(
     val accounts: List<AccountDto> = emptyList(),
     val account: AccountDto? = null,
     val loanType: String = "CASH",
+    val interestType: String = "FIXED",      // FIXED / VARIABLE (BE @NotNull)
     val amount: String = "",
     val durationMonths: String = "",
     val purpose: String = "",

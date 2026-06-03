@@ -99,7 +99,7 @@ fun ProfitBankScreen(
                             MoneyFormatter.format(actuary.realizedProfitRsd, 2),
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.SemiBold,
-                            color = if (actuary.realizedProfitRsd >= 0) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error
+                            color = if (actuary.realizedProfitRsd >= java.math.BigDecimal.ZERO) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error
                         )
                     }
                 }
@@ -124,9 +124,9 @@ fun ProfitBankScreen(
                             }
                             position.profitRsd?.let {
                                 Text(
-                                    "${if (it >= 0) "+" else ""}${MoneyFormatter.format(it, 2)}",
+                                    "${if (it >= java.math.BigDecimal.ZERO) "+" else ""}${MoneyFormatter.format(it, 2)}",
                                     style = MaterialTheme.typography.labelMedium,
-                                    color = if (it >= 0) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error
+                                    color = if (it >= java.math.BigDecimal.ZERO) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error
                                 )
                             }
                         }
@@ -155,14 +155,14 @@ fun ProfitBankScreen(
             accounts = state.accounts,
             isSubmitting = state.submitting,
             onDismiss = viewModel::closeDialogs,
-            onConfirm = { account, amount -> viewModel.invest(target.fundId, account.id, amount) }
+            onConfirm = { account, amount -> viewModel.invest(target.fundId, account.id, amount, account.currency ?: "RSD") }
         )
     }
     state.withdrawTarget?.let { target ->
         WithdrawDialog(
             fundName = target.fundName ?: "Fond #${target.fundId}",
             accounts = state.accounts,
-            currentShareRsd = target.shareAmountRsd ?: 0.0,
+            currentShareRsd = target.shareAmountRsd ?: java.math.BigDecimal.ZERO,
             isSubmitting = state.submitting,
             onDismiss = viewModel::closeDialogs,
             onConfirm = { account, amount, all ->
@@ -178,12 +178,15 @@ private fun InvestDialog(
     accounts: List<AccountDto>,
     isSubmitting: Boolean,
     onDismiss: () -> Unit,
-    onConfirm: (AccountDto, Double) -> Unit
+    onConfirm: (AccountDto, java.math.BigDecimal) -> Unit
 ) {
     var amountText by remember { mutableStateOf("") }
-    var selected by remember { mutableStateOf(accounts.firstOrNull()) }
-    val parsedAmount = MoneyFormatter.parse(amountText)
-    val canSubmit = !isSubmitting && selected != null && parsedAmount != null && parsedAmount > 0.0
+    // R3-1606: key=accounts da default selektovan racun bude postavljen kad lista
+    // racuna stigne POSLE otvaranja dijaloga (loadAccounts je async). Bez key-a
+    // `selected` ostaje null → submit nemoguc.
+    var selected by remember(accounts) { mutableStateOf(accounts.firstOrNull()) }
+    val parsedAmount = MoneyFormatter.parseBigDecimal(amountText)
+    val canSubmit = !isSubmitting && selected != null && parsedAmount != null && parsedAmount > java.math.BigDecimal.ZERO
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -225,17 +228,18 @@ private fun InvestDialog(
 private fun WithdrawDialog(
     fundName: String,
     accounts: List<AccountDto>,
-    currentShareRsd: Double,
+    currentShareRsd: java.math.BigDecimal,
     isSubmitting: Boolean,
     onDismiss: () -> Unit,
-    onConfirm: (AccountDto, Double?, Boolean) -> Unit
+    onConfirm: (AccountDto, java.math.BigDecimal?, Boolean) -> Unit
 ) {
     var amountText by remember { mutableStateOf("") }
     var withdrawAll by remember { mutableStateOf(false) }
-    var selected by remember { mutableStateOf(accounts.firstOrNull()) }
-    val parsedAmount = MoneyFormatter.parse(amountText)
+    // R3-1606: key=accounts (vidi InvestDialog) — default racun se postavlja kad lista stigne.
+    var selected by remember(accounts) { mutableStateOf(accounts.firstOrNull()) }
+    val parsedAmount = MoneyFormatter.parseBigDecimal(amountText)
     val canSubmit = !isSubmitting && selected != null &&
-        (withdrawAll || (parsedAmount != null && parsedAmount > 0.0))
+        (withdrawAll || (parsedAmount != null && parsedAmount > java.math.BigDecimal.ZERO))
 
     AlertDialog(
         onDismissRequest = onDismiss,

@@ -26,11 +26,13 @@ class NotificationRepository @Inject constructor(
         page: Int = 0,
         size: Int = 20,
     ): ApiResult<NotificationPageDto> {
-        val read: Boolean? = when (filter) {
+        // P1-mobile-banking-1 (R3-1626): BE param je `onlyUnread` (true=neprocitane);
+        // za ALL ga izostavljamo (null) da bismo dobili sve.
+        val onlyUnread: Boolean? = when (filter) {
             NotificationFilter.ALL -> null
-            NotificationFilter.UNREAD -> false
+            NotificationFilter.UNREAD -> true
         }
-        return safeApiCall { api.list(read = read, page = page, size = size) }
+        return safeApiCall { api.list(onlyUnread = onlyUnread, page = page, size = size) }
     }
 
     suspend fun getUnreadCount(): ApiResult<UnreadCountDto> =

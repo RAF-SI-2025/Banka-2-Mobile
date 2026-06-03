@@ -15,6 +15,7 @@ import rs.raf.banka2.mobile.data.dto.listing.ListingDto
 import rs.raf.banka2.mobile.data.dto.option.OptionChainDto
 import rs.raf.banka2.mobile.data.repository.ListingRepository
 import rs.raf.banka2.mobile.data.repository.OptionRepository
+import java.math.BigDecimal
 import javax.inject.Inject
 
 @HiltViewModel
@@ -108,8 +109,8 @@ class SecuritiesDetailsViewModel @Inject constructor(
 fun <T> pickVisibleStrikeEntries(
     sortedByStrike: List<T>,
     rowsAroundPrice: Int,
-    strikeOf: (T) -> Double,
-    currentPrice: Double
+    strikeOf: (T) -> BigDecimal,
+    currentPrice: BigDecimal
 ): List<T> {
     if (rowsAroundPrice <= 0) return emptyList()
     if (sortedByStrike.size <= rowsAroundPrice * 2) return sortedByStrike

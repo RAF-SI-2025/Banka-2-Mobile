@@ -8,6 +8,7 @@ import retrofit2.http.Path
 import rs.raf.banka2.mobile.data.dto.margin.CreateMarginAccountDto
 import rs.raf.banka2.mobile.data.dto.margin.MarginAccountDto
 import rs.raf.banka2.mobile.data.dto.margin.MarginAmountRequestDto
+import rs.raf.banka2.mobile.data.dto.margin.MarginMessageDto
 import rs.raf.banka2.mobile.data.dto.margin.MarginTransactionDto
 
 interface MarginApi {
@@ -25,13 +26,13 @@ interface MarginApi {
     suspend fun deposit(
         @Path("id") id: Long,
         @Body body: MarginAmountRequestDto
-    ): Response<MarginAccountDto>
+    ): Response<MarginMessageDto>
 
     @POST("margin-accounts/{id}/withdraw")
     suspend fun withdraw(
         @Path("id") id: Long,
         @Body body: MarginAmountRequestDto
-    ): Response<MarginAccountDto>
+    ): Response<MarginMessageDto>
 
     @GET("margin-accounts/{id}/transactions")
     suspend fun transactions(@Path("id") id: Long): Response<List<MarginTransactionDto>>

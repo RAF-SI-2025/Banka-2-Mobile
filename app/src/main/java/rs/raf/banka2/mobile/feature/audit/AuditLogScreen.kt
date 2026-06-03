@@ -48,7 +48,9 @@ import rs.raf.banka2.mobile.data.dto.audit.AuditLogDto
  * B7 / Spec C3 §69 — Audit log portal (supervisor/admin only).
  *
  * Sastoji se od:
- *  - 4 filter polja: tip akcije (chip toggle), email aktera, datum od/do
+ *  - 4 filter polja: tip akcije (chip toggle), ID aktera, datum od/do
+ *    (R1 mob11: BE `/audit` nema email-based actor filter — samo numericki
+ *    `actorId` — pa polje prikazuje "ID aktera", ne email.)
  *  - Lista zapisa sa Badge varijantom po tipu akcije i actor/target info
  *  - Paginacija (prethodna/naredna)
  */
@@ -83,7 +85,7 @@ fun AuditLogScreen(
             FilterCard(
                 state = state,
                 onActionType = viewModel::setActionType,
-                onActorEmail = viewModel::setActorEmail,
+                onActorId = viewModel::setActorIdText,
                 onDateFrom = viewModel::setDateFrom,
                 onDateTo = viewModel::setDateTo,
                 onApply = viewModel::applyFilters,
@@ -129,7 +131,7 @@ fun AuditLogScreen(
 private fun FilterCard(
     state: AuditLogState,
     onActionType: (String?) -> Unit,
-    onActorEmail: (String) -> Unit,
+    onActorId: (String) -> Unit,
     onDateFrom: (String) -> Unit,
     onDateTo: (String) -> Unit,
     onApply: () -> Unit,
@@ -157,9 +159,10 @@ private fun FilterCard(
         }
         Spacer(Modifier.height(10.dp))
         AppTextField(
-            value = state.actorEmail,
-            onValueChange = onActorEmail,
-            label = "Akter (email)",
+            value = state.actorIdText,
+            onValueChange = onActorId,
+            label = "ID aktera",
+            keyboardType = androidx.compose.ui.text.input.KeyboardType.Number,
             modifier = Modifier.fillMaxWidth()
         )
         Spacer(Modifier.height(8.dp))

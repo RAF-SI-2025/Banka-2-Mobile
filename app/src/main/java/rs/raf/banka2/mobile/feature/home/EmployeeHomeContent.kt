@@ -177,9 +177,9 @@ private fun EmployeeStats(
     employeesTotal: Int,
     recentOrders: List<OrderDto>
 ) {
-    val portfolioValue = summary?.totalValue ?: 0.0
-    val portfolioProfit = summary?.totalProfit ?: 0.0
-    val taxOwed = summary?.taxOwed ?: 0.0
+    val portfolioValue = summary?.totalValue ?: java.math.BigDecimal.ZERO
+    val portfolioProfit = summary?.totalProfit ?: java.math.BigDecimal.ZERO
+    val taxOwed = summary?.taxOwed ?: java.math.BigDecimal.ZERO
     // BE vraca portfolio currency u summary-ju; default RSD ako fali. Ranije
     // hardkodovano "USD" ne odgovara realnom resu.
     val portfolioCurrency = summary?.currency?.takeIf { it.isNotBlank() } ?: "RSD"
@@ -196,11 +196,12 @@ private fun EmployeeStats(
                 accent = Color(0xFF6366F1),
                 modifier = Modifier.weight(1f)
             )
+            val profitNonNegative = portfolioProfit >= java.math.BigDecimal.ZERO
             StatCard(
-                title = if (portfolioProfit >= 0) "Profit" else "Gubitak",
-                value = (if (portfolioProfit >= 0) "+" else "") + MoneyFormatter.format(portfolioProfit, 0) + " " + portfolioCurrency,
-                icon = if (portfolioProfit >= 0) Icons.AutoMirrored.Filled.TrendingUp else Icons.AutoMirrored.Filled.TrendingDown,
-                accent = if (portfolioProfit >= 0) Color(0xFF10B981) else Color(0xFFEF4444),
+                title = if (profitNonNegative) "Profit" else "Gubitak",
+                value = (if (profitNonNegative) "+" else "") + MoneyFormatter.format(portfolioProfit, 0) + " " + portfolioCurrency,
+                icon = if (profitNonNegative) Icons.AutoMirrored.Filled.TrendingUp else Icons.AutoMirrored.Filled.TrendingDown,
+                accent = if (profitNonNegative) Color(0xFF10B981) else Color(0xFFEF4444),
                 modifier = Modifier.weight(1f)
             )
         }

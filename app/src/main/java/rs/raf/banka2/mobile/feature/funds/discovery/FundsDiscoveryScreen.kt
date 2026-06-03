@@ -130,9 +130,9 @@ fun FundsDiscoveryScreen(
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
                                 Text(
-                                    "${if (fund.profit >= 0) "+" else ""}${MoneyFormatter.format(fund.profit, 2)}",
+                                    "${if (fund.profit >= java.math.BigDecimal.ZERO) "+" else ""}${MoneyFormatter.format(fund.profit, 2)}",
                                     style = MaterialTheme.typography.labelMedium,
-                                    color = if (fund.profit >= 0) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error
+                                    color = if (fund.profit >= java.math.BigDecimal.ZERO) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error
                                 )
                             }
                         }

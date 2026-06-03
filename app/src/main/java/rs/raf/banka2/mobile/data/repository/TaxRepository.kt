@@ -16,8 +16,6 @@ class TaxRepository @Inject constructor(
     suspend fun listAll(userType: String? = null, name: String? = null): ApiResult<List<TaxRecordDto>> =
         safeApiCall { api.listAll(userType, name) }
 
-    suspend fun myRecord(): ApiResult<TaxRecordDto> = safeApiCall { api.myRecord() }
-
     suspend fun calculate(): ApiResult<Unit> = safeApiCall { api.calculate() }.map { }
 
     suspend fun getBreakdown(userId: Long, userType: String): ApiResult<List<TaxBreakdownItemDto>> =

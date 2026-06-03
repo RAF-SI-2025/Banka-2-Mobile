@@ -8,6 +8,7 @@ import retrofit2.http.PATCH
 import retrofit2.http.POST
 import retrofit2.http.Path
 import retrofit2.http.Query
+import rs.raf.banka2.mobile.data.dto.watchlist.AddWatchlistItemRequest
 import rs.raf.banka2.mobile.data.dto.watchlist.CreateWatchlistRequest
 import rs.raf.banka2.mobile.data.dto.watchlist.WatchlistDto
 import rs.raf.banka2.mobile.data.dto.watchlist.WatchlistItemDto
@@ -42,12 +43,13 @@ interface WatchlistApi {
     ): Response<List<WatchlistItemDto>>
 
     /**
-     * BE `addItem` koristi `@RequestParam("listingId")` umesto request body-ja.
+     * BE `addItem` cita `@RequestBody AddWatchlistItemRequest` (`{"listingId":N}`),
+     * NE `@RequestParam`. Ranije query → 400.
      */
     @POST("watchlists/{id}/items")
     suspend fun addItem(
         @Path("id") id: Long,
-        @Query("listingId") listingId: Long,
+        @Body body: AddWatchlistItemRequest,
     ): Response<WatchlistItemDto>
 
     /**

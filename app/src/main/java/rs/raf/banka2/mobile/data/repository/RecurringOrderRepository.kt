@@ -22,9 +22,6 @@ class RecurringOrderRepository @Inject constructor(
     suspend fun listMy(): ApiResult<List<RecurringOrderDto>> =
         safeApiCall { api.listMy() }
 
-    suspend fun getById(id: Long): ApiResult<RecurringOrderDto> =
-        safeApiCall { api.getById(id) }
-
     suspend fun create(
         listingId: Long,
         direction: RecurringDirection,

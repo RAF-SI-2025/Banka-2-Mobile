@@ -26,7 +26,9 @@ class LoanRepository @Inject constructor(
     suspend fun installments(id: Long): ApiResult<List<LoanInstallmentDto>> =
         safeApiCall { api.getInstallments(id) }
 
-    suspend fun earlyRepay(id: Long): ApiResult<LoanDto> = safeApiCall { api.earlyRepay(id) }
+    /** P1-mobile-banking-1 (R1-263): prosledi OTP kao `X-OTP-Code` header (BE-PAY-06 gate). */
+    suspend fun earlyRepay(id: Long, otpCode: String? = null): ApiResult<LoanDto> =
+        safeApiCall { api.earlyRepay(id, otpCode) }
 
     suspend fun myApplications(): ApiResult<List<LoanApplicationResponseDto>> =
         safeApiCall { api.getMyApplications() }

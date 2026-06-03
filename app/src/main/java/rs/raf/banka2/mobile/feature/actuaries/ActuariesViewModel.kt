@@ -39,7 +39,7 @@ class ActuariesViewModel @Inject constructor(
         }
     }
 
-    fun updateLimit(employeeId: Long, dailyLimit: Double, needApproval: Boolean) = viewModelScope.launch {
+    fun updateLimit(employeeId: Long, dailyLimit: java.math.BigDecimal, needApproval: Boolean) = viewModelScope.launch {
         when (val result = repository.updateLimit(employeeId, dailyLimit, needApproval)) {
             is ApiResult.Success -> {
                 _events.send(ActuariesEvent.Toast("Limit aktuara je azuriran."))

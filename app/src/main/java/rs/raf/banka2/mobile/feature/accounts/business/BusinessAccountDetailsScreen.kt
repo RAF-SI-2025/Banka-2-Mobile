@@ -11,7 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PersonOutline
 import androidx.compose.material3.Icon
@@ -97,7 +97,13 @@ fun BusinessAccountDetailsScreen(
                         )
                     }
                 } else {
-                    items(acc.authorizedPersons, key = { it.id ?: it.email.orEmpty().hashCode().toLong() }) { person ->
+                    // R6 deep2c: kompozitni (id|email)+index key — `hashCode().toLong()`
+                    // fallback (32-bit) je mogao kolidirati izmedju razlicitih lica sa null id-em
+                    // ili sa realnim malim id-em → "Key was already used" crash. Index garantuje jedinstvenost.
+                    itemsIndexed(
+                        acc.authorizedPersons,
+                        key = { index, it -> "person-${it.id ?: it.email.orEmpty()}-$index" }
+                    ) { _, person ->
                         GlassCard(modifier = Modifier.fillMaxWidth()) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(Icons.Filled.PersonOutline, null, tint = MaterialTheme.colorScheme.primary)

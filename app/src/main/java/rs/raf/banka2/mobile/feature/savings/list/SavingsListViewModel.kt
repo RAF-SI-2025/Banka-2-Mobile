@@ -49,8 +49,13 @@ data class SavingsListState(
         get() = deposits.filter { it.currencyCode == "RSD" }
             .fold(BigDecimal.ZERO) { acc, d -> acc + d.principalAmount }
 
+    // R4-1364-savings (display/money): ekran (SavingsListScreen) prikazuje ovaj zbir
+    // sa hard-kodiranim "RSD" labelom. Sabiranje kamate preko valuta (EUR/USD/...)
+    // bez konverzije pod "RSD" labelom je mesanje valuta — filtriramo na RSD-only,
+    // paritetno sa `totalPrincipalRsd`.
     val totalInterestPaid: BigDecimal
-        get() = deposits.fold(BigDecimal.ZERO) { acc, d -> acc + d.totalInterestPaid }
+        get() = deposits.filter { it.currencyCode == "RSD" }
+            .fold(BigDecimal.ZERO) { acc, d -> acc + d.totalInterestPaid }
 
     val activeCount: Int
         get() = deposits.count { it.status == "ACTIVE" }

@@ -95,14 +95,4 @@ class MoneyFormatterTest {
     fun currencyFlag_unknown_returnsWhiteFlag() {
         assertEquals("🏳️", CurrencyVisuals.flag("XYZ"))
     }
-
-    @Test
-    fun currencySymbol_eur_returnsEuroSign() {
-        assertEquals("€", CurrencyVisuals.symbol("EUR"))
-    }
-
-    @Test
-    fun currencySymbol_unknown_passthrough() {
-        assertEquals("XYZ", CurrencyVisuals.symbol("XYZ"))
-    }
 }

@@ -142,14 +142,14 @@ fun ExchangeScreen(
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                             Text(
-                                "Srednji: ${MoneyFormatter.format(rate.middleRate ?: rate.rate ?: 0.0, 4)}",
+                                "Srednji: ${MoneyFormatter.format(rate.middleRate ?: rate.rate ?: java.math.BigDecimal.ZERO, 4)}",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                         Column(horizontalAlignment = Alignment.End) {
-                            Text("Kupovni: ${MoneyFormatter.format(rate.buyRate ?: 0.0, 4)}", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurface)
-                            Text("Prodajni: ${MoneyFormatter.format(rate.sellRate ?: 0.0, 4)}", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurface)
+                            Text("Kupovni: ${MoneyFormatter.format(rate.buyRate ?: java.math.BigDecimal.ZERO, 4)}", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurface)
+                            Text("Prodajni: ${MoneyFormatter.format(rate.sellRate ?: java.math.BigDecimal.ZERO, 4)}", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurface)
                         }
                     }
                     if (ccy.isNotBlank()) {
@@ -188,7 +188,8 @@ fun ExchangeScreen(
                                 else -> {
                                     val first = history.first().rate
                                     val last = history.last().rate
-                                    val change = ((last - first) / first) * 100.0
+                                    val firstD = first.toDouble()
+                                    val change = if (firstD != 0.0) ((last.toDouble() - firstD) / firstD) * 100.0 else 0.0
                                     Spacer(Modifier.height(4.dp))
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),

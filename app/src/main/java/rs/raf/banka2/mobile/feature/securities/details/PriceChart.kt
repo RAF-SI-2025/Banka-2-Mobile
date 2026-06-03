@@ -86,7 +86,7 @@ fun PriceChart(
             .fillMaxWidth()
             .height(height)
     ) {
-        val values = points.map { it.resolvedClose }
+        val values = points.map { it.resolvedClose.toDouble() }
         val minV = values.minOrNull() ?: return@Canvas
         val maxV = (values.maxOrNull() ?: return@Canvas).coerceAtLeast(minV + 0.0001)
         val range = maxV - minV
@@ -112,7 +112,7 @@ fun PriceChart(
         val fillPath = Path()
         points.forEachIndexed { index, dp ->
             val x = stepX * index
-            val normalized = ((dp.resolvedClose - minV) / range).toFloat()
+            val normalized = ((dp.resolvedClose.toDouble() - minV) / range).toFloat()
             val y = h - (normalized * h)
             if (index == 0) {
                 linePath.moveTo(x, y)

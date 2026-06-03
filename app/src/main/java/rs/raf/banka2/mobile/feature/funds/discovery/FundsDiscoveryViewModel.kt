@@ -4,6 +4,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -71,15 +74,27 @@ class FundsDiscoveryViewModel @Inject constructor(
      * B12 / Spec C4 §15: za svaki fond u listi povuci statistiku (annualReturn,
      * sharpe, maxDrawdown, volatility). Pokrece se nakon `loadFunds`. Tihi
      * fallback — fond koji nema dovoljno istorije ne pojavljuje se u mapi.
+     *
+     * R1-596: zahtevi se salju PARALELNO (`async`/`awaitAll`) umesto sekvencijalno
+     * jedan-po-jedan. Ranije je N fondova = N serijskih round-trip-ova (npr. 20
+     * fondova × ~150ms = ~3s blokade pre nego se statistika pojavi); sada je ~max
+     * jednog poziva. Tihi fallback po fondu ostaje (greska ne rusi ostale).
      */
     private suspend fun loadStatistics(funds: List<FundSummaryDto>) {
-        val results = mutableMapOf<Long, FundStatisticsDto>()
-        funds.forEach { fund ->
-            when (val r = repository.statistics(fund.id)) {
-                is ApiResult.Success -> results[fund.id] = r.data
-                else -> Unit // tihi fallback — UI prikazuje "—"
-            }
+        if (funds.isEmpty()) {
+            _state.update { it.copy(statisticsByFundId = emptyMap()) }
+            return
         }
+        val results = coroutineScope {
+            funds.map { fund ->
+                async {
+                    when (val r = repository.statistics(fund.id)) {
+                        is ApiResult.Success -> fund.id to r.data
+                        else -> null // tihi fallback — UI prikazuje "—"
+                    }
+                }
+            }.awaitAll()
+        }.filterNotNull().toMap()
         _state.update { it.copy(statisticsByFundId = results) }
     }
 

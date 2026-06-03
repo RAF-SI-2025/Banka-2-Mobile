@@ -24,9 +24,6 @@ interface RecurringOrderApi {
     @GET("recurring-orders")
     suspend fun listMy(): Response<List<RecurringOrderDto>>
 
-    @GET("recurring-orders/{id}")
-    suspend fun getById(@Path("id") id: Long): Response<RecurringOrderDto>
-
     @PATCH("recurring-orders/{id}/pause")
     suspend fun pause(@Path("id") id: Long): Response<RecurringOrderDto>
 

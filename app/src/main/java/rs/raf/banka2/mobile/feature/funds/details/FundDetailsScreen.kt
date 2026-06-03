@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
@@ -95,9 +96,9 @@ fun FundDetailsScreen(
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            "${if (fund.profit >= 0) "+" else ""}${MoneyFormatter.format(fund.profit, 2)} (${fund.profitPercent?.let { MoneyFormatter.format(it, 2) } ?: "—"} %)",
+                            "${if (fund.profit >= java.math.BigDecimal.ZERO) "+" else ""}${MoneyFormatter.format(fund.profit, 2)} (${fund.profitPercent?.let { MoneyFormatter.format(it, 2) } ?: "—"} %)",
                             style = MaterialTheme.typography.titleMedium,
-                            color = if (fund.profit >= 0) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error
+                            color = if (fund.profit >= java.math.BigDecimal.ZERO) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error
                         )
                         Spacer(Modifier.height(8.dp))
                         Text(
@@ -189,7 +190,7 @@ fun FundDetailsScreen(
                                 Text(
                                     "Profit: ${MoneyFormatter.format(it, 2)} (${position.profitPercent?.let { p -> MoneyFormatter.format(p, 2) } ?: "—"} %)",
                                     style = MaterialTheme.typography.bodyMedium,
-                                    color = if (it >= 0) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error
+                                    color = if (it >= java.math.BigDecimal.ZERO) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error
                                 )
                             }
                         }
@@ -199,7 +200,12 @@ fun FundDetailsScreen(
                     item {
                         Text("Hartije fonda", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
                     }
-                    items(fund.holdings, key = { it.listingId ?: it.ticker.orEmpty().hashCode().toLong() }) { holding ->
+                    // R6 deep2c: kompozitni (listingId|ticker)+index key — izbegava
+                    // `hashCode().toLong()` koliziju za null-listingId hartije sa istim/null ticker-om.
+                    itemsIndexed(
+                        fund.holdings,
+                        key = { index, it -> "holding-${it.listingId ?: it.ticker.orEmpty()}-$index" }
+                    ) { _, holding ->
                         GlassCard(modifier = Modifier.fillMaxWidth()) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Column(modifier = Modifier.weight(1f)) {
@@ -252,11 +258,11 @@ fun FundDetailsScreen(
     if (showInvest) {
         InvestDialog(
             accounts = state.accounts,
-            minContribution = state.fund?.minimumContribution ?: 0.0,
+            minContribution = state.fund?.minimumContribution ?: java.math.BigDecimal.ZERO,
             isLoading = state.submitting,
             onDismiss = { showInvest = false },
             onConfirm = { account, amount ->
-                viewModel.invest(account.id, amount)
+                viewModel.invest(account.id, amount, account.currency ?: "RSD")
                 showInvest = false
             }
         )
@@ -264,7 +270,7 @@ fun FundDetailsScreen(
     if (showWithdraw) {
         WithdrawDialog(
             accounts = state.accounts,
-            currentInvested = state.myPosition?.currentValue ?: 0.0,
+            currentInvested = state.myPosition?.currentValue ?: java.math.BigDecimal.ZERO,
             isLoading = state.submitting,
             onDismiss = { showWithdraw = false },
             onConfirm = { account, amount, all ->
@@ -278,14 +284,14 @@ fun FundDetailsScreen(
 @Composable
 private fun InvestDialog(
     accounts: List<AccountDto>,
-    minContribution: Double,
+    minContribution: java.math.BigDecimal,
     isLoading: Boolean,
     onDismiss: () -> Unit,
-    onConfirm: (AccountDto, Double) -> Unit
+    onConfirm: (AccountDto, java.math.BigDecimal) -> Unit
 ) {
     var selected by remember { mutableStateOf(accounts.firstOrNull()) }
     var amount by remember { mutableStateOf("") }
-    val parsed = MoneyFormatter.parse(amount)
+    val parsed = MoneyFormatter.parseBigDecimal(amount)
     val canSubmit = selected != null && parsed != null && parsed >= minContribution && !isLoading
 
     AlertDialog(
@@ -317,16 +323,16 @@ private fun InvestDialog(
 @Composable
 private fun WithdrawDialog(
     accounts: List<AccountDto>,
-    currentInvested: Double,
+    currentInvested: java.math.BigDecimal,
     isLoading: Boolean,
     onDismiss: () -> Unit,
-    onConfirm: (AccountDto, Double?, Boolean) -> Unit
+    onConfirm: (AccountDto, java.math.BigDecimal?, Boolean) -> Unit
 ) {
     var selected by remember { mutableStateOf(accounts.firstOrNull()) }
     var amount by remember { mutableStateOf("") }
     var all by remember { mutableStateOf(false) }
-    val parsed = MoneyFormatter.parse(amount)
-    val canSubmit = selected != null && (all || (parsed != null && parsed > 0 && parsed <= currentInvested)) && !isLoading
+    val parsed = MoneyFormatter.parseBigDecimal(amount)
+    val canSubmit = selected != null && (all || (parsed != null && parsed > java.math.BigDecimal.ZERO && parsed <= currentInvested)) && !isLoading
 
     AlertDialog(
         onDismissRequest = { if (!isLoading) onDismiss() },

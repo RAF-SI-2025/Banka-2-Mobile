@@ -94,12 +94,16 @@ fun ExchangesScreen(
                                 Text("Sledece otvaranje: $it", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
-                        Column(horizontalAlignment = Alignment.End) {
-                            Text("Test", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Switch(
-                                checked = exchange.testMode == true,
-                                onCheckedChange = { viewModel.toggleTestMode(exchange.acronym, it) }
-                            )
+                        // R1 752: test-mode toggle samo za admin/supervisor — ostali ga
+                        // ni ne vide (BE bi vratio 403 na klik).
+                        if (state.canManageTestMode) {
+                            Column(horizontalAlignment = Alignment.End) {
+                                Text("Test", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Switch(
+                                    checked = exchange.testMode == true,
+                                    onCheckedChange = { viewModel.toggleTestMode(exchange.acronym, it) }
+                                )
+                            }
                         }
                     }
                 }

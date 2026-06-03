@@ -10,6 +10,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import rs.raf.banka2.mobile.core.auth.SessionManager
+import rs.raf.banka2.mobile.core.auth.SessionState
 import rs.raf.banka2.mobile.core.network.ApiResult
 import rs.raf.banka2.mobile.data.dto.listing.ExchangeManagementDto
 import rs.raf.banka2.mobile.data.repository.ExchangeManagementRepository
@@ -17,7 +19,8 @@ import javax.inject.Inject
 
 @HiltViewModel
 class ExchangesViewModel @Inject constructor(
-    private val repository: ExchangeManagementRepository
+    private val repository: ExchangeManagementRepository,
+    private val sessionManager: SessionManager
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(ExchangesState())
@@ -26,7 +29,22 @@ class ExchangesViewModel @Inject constructor(
     private val _events = Channel<ExchangesEvent>(Channel.BUFFERED)
     val events = _events.receiveAsFlow()
 
-    init { refresh() }
+    init {
+        observeRole()
+        refresh()
+    }
+
+    private fun observeRole() {
+        viewModelScope.launch {
+            sessionManager.state.collect { session ->
+                // R1 752/exchanges-berza: test-mode toggle je ADMIN/SUPERVISOR akcija
+                // (BE odbija ostale sa 403). Gejtujemo UI tako da ne-privilegovani
+                // korisnik ni ne vidi Switch (umesto da dobije 403 na klik).
+                val role = (session as? SessionState.LoggedIn)?.profile?.role
+                _state.update { it.copy(canManageTestMode = role?.isSupervisor == true) }
+            }
+        }
+    }
 
     fun refresh() = viewModelScope.launch {
         _state.update { it.copy(loading = true, error = null) }
@@ -54,7 +72,9 @@ class ExchangesViewModel @Inject constructor(
 data class ExchangesState(
     val loading: Boolean = false,
     val exchanges: List<ExchangeManagementDto> = emptyList(),
-    val error: String? = null
+    val error: String? = null,
+    /** R1 752: samo admin/supervisor sme da menja test-mode (BE 403 za ostale). */
+    val canManageTestMode: Boolean = false
 )
 
 sealed interface ExchangesEvent {

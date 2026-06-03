@@ -11,6 +11,7 @@ import kotlinx.coroutines.launch
 import rs.raf.banka2.mobile.core.network.ApiResult
 import rs.raf.banka2.mobile.data.dto.margin.MarginAccountDto
 import rs.raf.banka2.mobile.data.repository.MarginRepository
+import java.math.BigDecimal
 import javax.inject.Inject
 
 @HiltViewModel
@@ -34,7 +35,7 @@ class MarginViewModel @Inject constructor(
         }
     }
 
-    fun deposit(id: Long, amount: Double) = viewModelScope.launch {
+    fun deposit(id: Long, amount: BigDecimal) = viewModelScope.launch {
         when (val result = repository.deposit(id, amount)) {
             is ApiResult.Success -> refresh()
             is ApiResult.Failure -> _state.update { it.copy(error = result.error.message) }
@@ -42,7 +43,7 @@ class MarginViewModel @Inject constructor(
         }
     }
 
-    fun withdraw(id: Long, amount: Double) = viewModelScope.launch {
+    fun withdraw(id: Long, amount: BigDecimal) = viewModelScope.launch {
         when (val result = repository.withdraw(id, amount)) {
             is ApiResult.Success -> refresh()
             is ApiResult.Failure -> _state.update { it.copy(error = result.error.message) }

@@ -152,10 +152,10 @@ private fun AmountDialog(
     title: String,
     currency: String?,
     onDismiss: () -> Unit,
-    onConfirm: (Double) -> Unit
+    onConfirm: (java.math.BigDecimal) -> Unit
 ) {
     var text by remember { mutableStateOf("") }
-    val parsed = MoneyFormatter.parse(text)
+    val parsed = MoneyFormatter.parseBigDecimal(text)
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
@@ -169,7 +169,7 @@ private fun AmountDialog(
             )
         },
         confirmButton = {
-            TextButton(onClick = { parsed?.let(onConfirm) }, enabled = parsed != null && parsed > 0) {
+            TextButton(onClick = { parsed?.let(onConfirm) }, enabled = parsed != null && parsed > java.math.BigDecimal.ZERO) {
                 Text("Potvrdi")
             }
         },

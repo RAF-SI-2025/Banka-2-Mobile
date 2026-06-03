@@ -51,9 +51,6 @@ interface FundApi {
     @GET("funds/my-positions")
     suspend fun myPositions(): Response<List<FundPositionDto>>
 
-    @GET("funds/bank-positions")
-    suspend fun bankPositions(): Response<List<FundPositionDto>>
-
     /** P1.2: prebaci vlasnistvo fonda na drugog supervizora (admin/supervisor only). */
     @POST("funds/{id}/reassign-manager")
     suspend fun reassignManager(

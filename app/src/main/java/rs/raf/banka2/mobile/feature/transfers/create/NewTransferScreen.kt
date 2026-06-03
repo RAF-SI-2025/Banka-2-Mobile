@@ -129,6 +129,14 @@ fun NewTransferScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
+                    // R1-578: prikazi proviziju (fee) za FX prenos u confirm summary-ju.
+                    state.estimatedFee?.let { fee ->
+                        Text(
+                            "Provizija: ${MoneyFormatter.formatWithCurrency(fee, state.fromAccount?.currency)}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             }
             ErrorBanner(state.error)

@@ -5,6 +5,7 @@ import rs.raf.banka2.mobile.core.network.safeApiCall
 import rs.raf.banka2.mobile.data.api.ActuaryApi
 import rs.raf.banka2.mobile.data.dto.actuary.ActuaryDto
 import rs.raf.banka2.mobile.data.dto.actuary.UpdateActuaryLimitDto
+import java.math.BigDecimal
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -16,7 +17,7 @@ class ActuaryRepository @Inject constructor(
 
     suspend fun get(employeeId: Long): ApiResult<ActuaryDto> = safeApiCall { api.getActuary(employeeId) }
 
-    suspend fun updateLimit(employeeId: Long, dailyLimit: Double, needApproval: Boolean): ApiResult<ActuaryDto> =
+    suspend fun updateLimit(employeeId: Long, dailyLimit: BigDecimal, needApproval: Boolean): ApiResult<ActuaryDto> =
         safeApiCall { api.updateLimit(employeeId, UpdateActuaryLimitDto(dailyLimit, needApproval)) }
 
     suspend fun resetLimit(employeeId: Long): ApiResult<ActuaryDto> =

@@ -18,7 +18,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.Done
@@ -239,7 +238,7 @@ private fun NotificationRow(n: NotificationDto, onClick: () -> Unit) {
                     color = MaterialTheme.colorScheme.onSurface,
                 )
                 Text(
-                    text = n.message,
+                    text = n.message.orEmpty(),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 3,
@@ -305,24 +304,21 @@ private fun PaginationRow(
     }
 }
 
+// P1-mobile-banking-1 (R1-151): grane uskladjene sa BE NotificationType enum imenima.
 private fun iconFor(type: String): ImageVector = when (NotificationType.normalize(type)) {
-    NotificationType.PAYMENT_RECEIVED, NotificationType.PAYMENT_SENT,
-    NotificationType.PAYMENT_PENDING_APPROVAL, NotificationType.TRANSFER -> Icons.Filled.Paid
+    NotificationType.PAYMENT, NotificationType.TRANSFER,
+    NotificationType.LIMIT_CHANGE -> Icons.Filled.Paid
     NotificationType.ORDER_PENDING, NotificationType.ORDER_APPROVED,
     NotificationType.ORDER_DECLINED, NotificationType.ORDER_EXECUTED,
-    NotificationType.ORDER_PARTIAL_FILL, NotificationType.ORDER_CANCELLED,
-    NotificationType.ORDER_FILLED -> Icons.Filled.ShoppingCart
-    NotificationType.OTC_OFFER_RECEIVED, NotificationType.OTC_COUNTER_OFFER,
-    NotificationType.OTC_ACCEPTED, NotificationType.OTC_DECLINED,
-    NotificationType.OTC_OFFER_ACCEPTED, NotificationType.OTC_OFFER_DECLINED,
-    NotificationType.OTC_CONTRACT_EXPIRING, NotificationType.OTC_CONTRACT_EXERCISED,
-    NotificationType.OTC_CONTRACT_EXPIRED -> Icons.Outlined.Handshake
-    NotificationType.FUND_INTEREST_PAID, NotificationType.FUND_DEPOSIT_MATURED ->
-        Icons.Filled.AccountBalanceWallet
-    NotificationType.LOAN_APPROVED, NotificationType.LOAN_DECLINED,
-    NotificationType.LOAN_PAYMENT_DUE -> Icons.Filled.PriceCheck
+    NotificationType.ORDER_PARTIAL_FILL, NotificationType.ORDER_CANCELLED ->
+        Icons.Filled.ShoppingCart
+    NotificationType.OTC_COUNTER_OFFER, NotificationType.OTC_ACCEPTED,
+    NotificationType.OTC_DECLINED, NotificationType.OTC_CONTRACT_EXPIRING ->
+        Icons.Outlined.Handshake
+    NotificationType.LOAN_CREATED, NotificationType.LOAN_APPROVED,
+    NotificationType.LOAN_REJECTED -> Icons.Filled.PriceCheck
     NotificationType.CARD_BLOCKED, NotificationType.CARD_UNBLOCKED -> Icons.Filled.CreditCard
-    NotificationType.ACCOUNT_LOCKED, NotificationType.MARGIN_ACCOUNT_BLOCKED -> Icons.Filled.Lock
+    NotificationType.ACCOUNT_LOCKED -> Icons.Filled.Lock
     NotificationType.PRICE_ALERT_TRIGGERED -> Icons.Filled.Bolt
     else -> Icons.Outlined.Notifications
 }

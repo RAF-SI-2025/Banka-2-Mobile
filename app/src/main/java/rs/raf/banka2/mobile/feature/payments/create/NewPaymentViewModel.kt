@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import rs.raf.banka2.mobile.BuildConfig
 import rs.raf.banka2.mobile.core.format.AccountFormatter
 import rs.raf.banka2.mobile.core.format.MoneyFormatter
 import rs.raf.banka2.mobile.core.network.ApiResult
@@ -26,8 +27,11 @@ import rs.raf.banka2.mobile.data.repository.RecipientRepository
 import java.math.BigDecimal
 import javax.inject.Inject
 
-/** Routing prefix nase banke (Banka 2). Sve sto je drugacije ide na inter-bank flow. */
-private const val OUR_BANK_ROUTING = "222"
+/**
+ * Routing prefix nase banke (Banka 2). Sve sto je drugacije ide na inter-bank flow.
+ * R1-586: vrednost dolazi iz `BuildConfig.BANK_ROUTING_PREFIX` (vise nije hardkodirano).
+ */
+private val OUR_BANK_ROUTING = BuildConfig.BANK_ROUTING_PREFIX
 
 @HiltViewModel
 class NewPaymentViewModel @Inject constructor(
@@ -115,12 +119,19 @@ class NewPaymentViewModel @Inject constructor(
         val current = _state.value
         // ME-11: parseBigDecimal — precision iznosi za payments (spec C2 §255).
         val parsedAmount = MoneyFormatter.parseBigDecimal(current.amount)
+        val from = current.fromAccount
         when {
-            current.fromAccount == null -> _state.update { it.copy(error = "Odaberi racun pošiljaoca.") }
+            from == null -> _state.update { it.copy(error = "Odaberi racun pošiljaoca.") }
             current.recipientName.isBlank() -> _state.update { it.copy(error = "Ime primaoca je obavezno.") }
             current.toAccountNumber.isBlank() -> _state.update { it.copy(error = "Broj racuna primaoca je obavezan.") }
             parsedAmount == null || parsedAmount <= BigDecimal.ZERO -> _state.update { it.copy(error = "Iznos mora biti veci od 0.") }
             current.paymentPurpose.isBlank() -> _state.update { it.copy(error = "Svrha placanja je obavezna.") }
+            // R1 865: soft pre-check raspolozivog salda PRE OTP-a (UX) — iznos je u
+            // valuti izvornog racuna. BE ostaje autoritet (provizija, rezervacije,
+            // 2PC FX) ali ovde sprecavamo nepotreban OTP za ocigledno nedovoljan saldo.
+            parsedAmount > from.availableBalance -> _state.update {
+                it.copy(error = "Iznos prevazilazi raspolozivi saldo izvornog racuna.")
+            }
             else -> _state.update {
                 val routing = AccountFormatter.routingPrefix(current.toAccountNumber)
                 val isInter = routing != null && routing != OUR_BANK_ROUTING
@@ -141,11 +152,8 @@ class NewPaymentViewModel @Inject constructor(
         it.copy(showConfirmDialog = false, showVerification = true)
     }
 
-    /**
-     * @deprecated ME-06: koristi `openConfirmDialog()` umesto direktnog OTP-a.
-     * Zadrzano radi backwards-compat sa testovima koji jos ne znaju za confirm korak.
-     */
-    fun openVerification() = openConfirmDialog()
+    // R1 868: deprecated `openVerification()` shim uklonjen — ekran i testovi koriste
+    // `openConfirmDialog()` (confirm dialog pre OTP-a); shim je bio bez ijednog callera.
 
     fun closeVerification() = _state.update { it.copy(showVerification = false) }
 

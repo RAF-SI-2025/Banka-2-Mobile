@@ -11,6 +11,12 @@ import javax.inject.Singleton
 /**
  * Audit log repository — B7 / Spec C3 §69. Supervisor/admin only.
  * BE vraca 403 ako poziv stigne sa drugacijim profilom.
+ *
+ * NAPOMENA: gateway rutira `/audit` -> trading-service. Akter se filtrira po
+ * `actorId` (numericki ID) ILI `actorName` (ime aktera/supervizora — Sc45; BE
+ * razresi ime -> actorId-eve preko banka-core). Datumi (`YYYY-MM-DD`) se
+ * konvertuju u ISO `LocalDateTime` String (`from` = pocetak dana, `to` = kraj
+ * dana) koji BE parsira sa `LocalDateTime.parse(...)`.
  */
 @Singleton
 class AuditRepository @Inject constructor(
@@ -19,7 +25,7 @@ class AuditRepository @Inject constructor(
     suspend fun query(
         actionType: String? = null,
         actorId: Long? = null,
-        actorEmail: String? = null,
+        actorName: String? = null,
         dateFrom: String? = null,
         dateTo: String? = null,
         page: Int = 0,
@@ -29,11 +35,17 @@ class AuditRepository @Inject constructor(
             api.queryAuditLogs(
                 actionType = actionType?.takeIf { it.isNotBlank() },
                 actorId = actorId,
-                actorEmail = actorEmail?.takeIf { it.isNotBlank() },
-                dateFrom = dateFrom?.takeIf { it.isNotBlank() },
-                dateTo = dateTo?.takeIf { it.isNotBlank() },
+                actorName = actorName?.takeIf { it.isNotBlank() },
+                from = toStartOfDayIso(dateFrom),
+                to = toEndOfDayIso(dateTo),
                 page = page,
                 size = size
             )
         }
+
+    private fun toStartOfDayIso(date: String?): String? =
+        date?.takeIf { it.isNotBlank() }?.let { "${it}T00:00:00" }
+
+    private fun toEndOfDayIso(date: String?): String? =
+        date?.takeIf { it.isNotBlank() }?.let { "${it}T23:59:59" }
 }

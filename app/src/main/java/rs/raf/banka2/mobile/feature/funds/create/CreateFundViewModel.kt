@@ -35,8 +35,8 @@ class CreateFundViewModel @Inject constructor(
         if (current.name.isBlank()) {
             _state.update { it.copy(error = "Naziv fonda je obavezan.") }; return
         }
-        val min = MoneyFormatter.parse(current.minContribution)
-        if (min == null || min <= 0.0) {
+        val min = MoneyFormatter.parseBigDecimal(current.minContribution)
+        if (min == null || min <= java.math.BigDecimal.ZERO) {
             _state.update { it.copy(error = "Min ulog mora biti veci od 0.") }; return
         }
         viewModelScope.launch {

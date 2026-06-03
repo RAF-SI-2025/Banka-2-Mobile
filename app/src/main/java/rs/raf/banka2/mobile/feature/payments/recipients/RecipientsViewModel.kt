@@ -38,9 +38,9 @@ class RecipientsViewModel @Inject constructor(
         }
     }
 
-    fun create(name: String, accountNumber: String, description: String?) = viewModelScope.launch {
+    fun create(name: String, accountNumber: String) = viewModelScope.launch {
         _state.update { it.copy(submitting = true, error = null) }
-        when (val result = repository.create(name, accountNumber, description)) {
+        when (val result = repository.create(name, accountNumber)) {
             is ApiResult.Success -> {
                 _state.update { it.copy(submitting = false) }
                 refresh()
@@ -52,9 +52,9 @@ class RecipientsViewModel @Inject constructor(
         }
     }
 
-    fun update(id: Long, name: String, accountNumber: String, description: String?) = viewModelScope.launch {
+    fun update(id: Long, name: String, accountNumber: String) = viewModelScope.launch {
         _state.update { it.copy(submitting = true, error = null) }
-        when (val result = repository.update(id, name, accountNumber, description)) {
+        when (val result = repository.update(id, name, accountNumber)) {
             is ApiResult.Success -> {
                 _state.update { it.copy(submitting = false) }
                 refresh()

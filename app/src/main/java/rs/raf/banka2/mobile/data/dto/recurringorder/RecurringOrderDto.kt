@@ -11,7 +11,6 @@ import java.math.BigDecimal
  * BE rute:
  *   POST   /recurring-orders            (CreateRecurringOrderDto, 201 Created)
  *   GET    /recurring-orders            -> listMy
- *   GET    /recurring-orders/{id}       -> getById
  *   PATCH  /recurring-orders/{id}/pause -> ACTIVE -> PAUSED
  *   PATCH  /recurring-orders/{id}/resume -> PAUSED -> ACTIVE
  *   DELETE /recurring-orders/{id}       -> 204 No Content

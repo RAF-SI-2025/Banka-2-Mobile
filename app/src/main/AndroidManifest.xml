@@ -3,7 +3,13 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- R6 deep2b: ACCESS_NETWORK_STATE uklonjen — nije bio koriscen (nema
+         ConnectivityManager/NetworkCallback offline-detekcije). Kad/ako se doda
+         offline mod, vrati ovu permisiju zajedno sa implementacijom. -->
+    <!-- R3-1635 (feature backlog): push notifikacije (FCM) nisu implementirane —
+         nema FirebaseMessagingService / POST_NOTIFICATIONS / notif kanala / deep-link
+         iz push-a. In-app notif inbox (Routes.Notifications) pokriva trenutne potrebe;
+         FCM je posebna feature stavka, ne P3 cleanup. -->
 
     <application
         android:name=".BankaApp"

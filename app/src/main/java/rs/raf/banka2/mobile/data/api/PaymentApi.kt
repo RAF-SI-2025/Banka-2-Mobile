@@ -7,11 +7,10 @@ import retrofit2.http.POST
 import retrofit2.http.Path
 import retrofit2.http.Query
 import rs.raf.banka2.mobile.data.dto.common.PageResponse
+import rs.raf.banka2.mobile.data.dto.payment.ApprovePaymentRequest
 import rs.raf.banka2.mobile.data.dto.payment.CreatePaymentRequestDto
 import rs.raf.banka2.mobile.data.dto.payment.OtpRequestStatusDto
 import rs.raf.banka2.mobile.data.dto.payment.OtpResponseDto
-import rs.raf.banka2.mobile.data.dto.payment.OtpVerifyRequest
-import rs.raf.banka2.mobile.data.dto.payment.OtpVerifyResponse
 import rs.raf.banka2.mobile.data.dto.payment.PaymentListItemDto
 import rs.raf.banka2.mobile.data.dto.payment.PaymentResponseDto
 
@@ -40,6 +39,13 @@ interface PaymentApi {
     @GET("payments/{id}")
     suspend fun getPaymentById(@Path("id") id: Long): Response<PaymentResponseDto>
 
+    /** Quick Approve (TODO_final #7): odobrava PENDING payment sa 6-cifrenim OTP-om. */
+    @POST("payments/{id}/approve")
+    suspend fun approve(
+        @Path("id") id: Long,
+        @Body body: ApprovePaymentRequest
+    ): Response<PaymentResponseDto>
+
     // ─── OTP ─────────────────────────────────────────────────
     @POST("payments/request-otp")
     suspend fun requestOtp(): Response<OtpRequestStatusDto>
@@ -49,7 +55,4 @@ interface PaymentApi {
 
     @GET("payments/my-otp")
     suspend fun getActiveOtp(): Response<OtpResponseDto>
-
-    @POST("payments/verify")
-    suspend fun verifyOtp(@Body body: OtpVerifyRequest): Response<OtpVerifyResponse>
 }

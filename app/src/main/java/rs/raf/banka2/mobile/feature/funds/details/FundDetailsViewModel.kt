@@ -81,9 +81,9 @@ class FundDetailsViewModel @Inject constructor(
         }
     }
 
-    fun invest(sourceAccountId: Long, amount: Double) = viewModelScope.launch {
+    fun invest(sourceAccountId: Long, amount: java.math.BigDecimal, currency: String = "RSD") = viewModelScope.launch {
         _state.update { it.copy(submitting = true, error = null) }
-        when (val result = fundRepository.invest(fundId, sourceAccountId, amount)) {
+        when (val result = fundRepository.invest(fundId, sourceAccountId, amount, currency)) {
             is ApiResult.Success -> {
                 _state.update { it.copy(submitting = false) }
                 _events.send(FundDetailsEvent.Toast("Ulaganje uspesno."))
@@ -96,7 +96,7 @@ class FundDetailsViewModel @Inject constructor(
         }
     }
 
-    fun withdraw(destinationAccountId: Long, amount: Double?, withdrawAll: Boolean) = viewModelScope.launch {
+    fun withdraw(destinationAccountId: Long, amount: java.math.BigDecimal?, withdrawAll: Boolean) = viewModelScope.launch {
         _state.update { it.copy(submitting = true, error = null) }
         when (val result = fundRepository.withdraw(fundId, destinationAccountId, amount, withdrawAll)) {
             is ApiResult.Success -> {

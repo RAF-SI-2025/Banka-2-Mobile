@@ -47,7 +47,4 @@ interface EmployeeAdminApi {
 
     @PATCH("employees/{id}/deactivate")
     suspend fun deactivate(@Path("id") id: Long): Response<EmployeeDto>
-
-    @GET("employees/{id}/permissions")
-    suspend fun getPermissions(@Path("id") id: Long): Response<List<String>>
 }

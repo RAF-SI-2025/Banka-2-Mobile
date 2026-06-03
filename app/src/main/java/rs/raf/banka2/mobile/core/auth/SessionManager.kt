@@ -62,9 +62,6 @@ data class UserProfile(
 ) {
     val fullName: String get() = "$firstName $lastName".trim().ifBlank { email }
 
-    fun has(permission: String): Boolean =
-        permissions.any { it.equals(permission, ignoreCase = true) }
-
     /**
      * ME-04: klijenti moraju imati canTradeStocks=true da bi pristupili Securities/OTC.
      * Employee/Admin/Supervisor uvek imaju pristup; samo CLIENT ima ovaj gating.

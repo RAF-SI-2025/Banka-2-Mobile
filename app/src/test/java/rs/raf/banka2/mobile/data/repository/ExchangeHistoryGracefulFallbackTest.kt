@@ -12,6 +12,7 @@ import retrofit2.Response
 import rs.raf.banka2.mobile.core.network.ApiResult
 import rs.raf.banka2.mobile.data.api.ExchangeApi
 import rs.raf.banka2.mobile.data.dto.exchange.ExchangeHistoryPointDto
+import java.math.BigDecimal
 
 /**
  * Mobile-bonus #5: graceful fallback za istoriju kursa.
@@ -28,8 +29,8 @@ class ExchangeHistoryGracefulFallbackTest {
     @Test
     fun history_200_returnsData() = runTest {
         val data = listOf(
-            ExchangeHistoryPointDto("2026-04-25", 117.0),
-            ExchangeHistoryPointDto("2026-05-25", 119.0)
+            ExchangeHistoryPointDto("2026-04-25", BigDecimal("117.0")),
+            ExchangeHistoryPointDto("2026-05-25", BigDecimal("119.0"))
         )
         coEvery { api.history(any(), any()) } returns Response.success(data)
 

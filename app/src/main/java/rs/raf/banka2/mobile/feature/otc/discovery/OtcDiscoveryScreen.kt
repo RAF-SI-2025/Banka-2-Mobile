@@ -105,6 +105,16 @@ fun OtcDiscoveryScreen(
             ScopeTabRow(state.scope, viewModel::setScope)
             Spacer(Modifier.height(8.dp))
             ErrorBanner(state.error)
+            // [SEC] R1-591/600: agent vidi listu (discovery & details) ali NE sme da
+            // inicira OTC ponudu — prikazujemo informativni banner umesto klikabilnih kartica.
+            if (!state.canSendOffer) {
+                Text(
+                    "Pregled je dostupan, ali slanje OTC ponuda mogu samo klijenti i supervizori.",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+            }
             LazyColumn(
                 verticalArrangement = Arrangement.spacedBy(10.dp),
                 modifier = Modifier.fillMaxSize()
@@ -121,7 +131,9 @@ fun OtcDiscoveryScreen(
                 items(state.listings, key = { "${it.listingId}-${it.sellerUserId ?: 0}-${it.bankRoutingNumber.orEmpty()}" }) { listing ->
                     GlassCard(modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { pickedListing = listing }
+                        // [SEC] R1-591/600: kartica je klikabilna (otvara formu ponude)
+                        // SAMO ako korisnik sme da inicira ponudu (klijent/supervizor, ne agent).
+                        .clickable(enabled = state.canSendOffer) { pickedListing = listing }
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Column(modifier = Modifier.weight(1f)) {

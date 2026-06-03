@@ -31,6 +31,14 @@ import javax.inject.Singleton
  *
  * Mutex stiti od race condition-a: vise paralelnih zahteva koji vrate 401
  * ce dobiti isti retry sa istim novim tokenom umesto da svaki pokusa refresh.
+ *
+ * IDEMPOTENCIJA (P0-M1 N3, paritet sa FE F1): OkHttp Authenticator automatski
+ * RE-SALJE neuspeli zahtev posle refresh-a. Za mutacione metode
+ * (POST/PUT/PATCH/DELETE) to moze dvostruko izvrsiti operaciju (npr. duplo
+ * placanje / order) ako je server vec primio prvi zahtev pre 401-a. Zato
+ * NE re-saljemo mutacione zahteve: refresh-ujemo token (da sledeci RUCNI
+ * pokusaj ima svez access) ali vracamo null → OkHttp ne retry-uje. Samo
+ * idempotentni GET se automatski re-salje.
  */
 @Singleton
 class TokenAuthenticator @Inject constructor(
@@ -54,16 +62,26 @@ class TokenAuthenticator @Inject constructor(
         }
         if (response.priorResponseCount() >= MAX_RETRIES) return null
 
+        // N3: zahtev je mutacioni (non-GET) ako nije GET. Za njega ne smemo da
+        // re-saljemo automatski (rizik dvostruke operacije) — refresh-ujemo token
+        // i vracamo null. Idempotentni GET se re-salje normalno.
+        val isIdempotent = response.request.method.equals("GET", ignoreCase = true)
+
         return runBlocking {
             refreshMutex.withLock {
                 val savedAccess = authStore.accessToken()
                 val sentAccess = response.request.header("Authorization")?.removePrefix("Bearer ")
 
-                // Drugi paralelni zahtev je vec refreshovao — koristi taj
+                // Drugi paralelni zahtev je vec refreshovao — koristi taj (samo za GET)
                 if (!savedAccess.isNullOrBlank() && savedAccess != sentAccess) {
-                    return@withLock response.request.newBuilder()
-                        .header("Authorization", "Bearer $savedAccess")
-                        .build()
+                    return@withLock if (isIdempotent) {
+                        response.request.newBuilder()
+                            .header("Authorization", "Bearer $savedAccess")
+                            .build()
+                    } else {
+                        // Token je vec svez; mutaciju ne re-saljemo automatski.
+                        null
+                    }
                 }
 
                 val refreshToken = authStore.refreshToken() ?: return@withLock null
@@ -73,6 +91,14 @@ class TokenAuthenticator @Inject constructor(
                     return@withLock null
                 }
                 authStore.saveTokens(newTokens.accessToken, newTokens.refreshToken)
+
+                if (!isIdempotent) {
+                    // Mutacija: token je osvezen za sledeci RUCNI pokusaj, ali NE
+                    // re-saljemo ovaj zahtev (idempotentnost — paritet sa FE F1).
+                    Timber.d("401 na mutacionom zahtevu — token osvezen, bez auto-retry-a")
+                    return@withLock null
+                }
+
                 response.request.newBuilder()
                     .header("Authorization", "Bearer ${newTokens.accessToken}")
                     .build()

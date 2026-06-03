@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import rs.raf.banka2.mobile.core.auth.PasswordPolicy
 import rs.raf.banka2.mobile.core.network.ApiResult
 import rs.raf.banka2.mobile.core.ui.navigation.Routes
 import rs.raf.banka2.mobile.data.repository.AuthRepository
@@ -48,8 +49,9 @@ class ResetPasswordViewModel @Inject constructor(
             _state.update { it.copy(error = "Token za reset je obavezan.") }
             return
         }
-        if (current.password.length < 8) {
-            _state.update { it.copy(error = "Lozinka mora imati bar 8 karaktera.") }
+        val passwordError = PasswordPolicy.validate(current.password)
+        if (passwordError != null) {
+            _state.update { it.copy(error = passwordError) }
             return
         }
         if (current.password != current.confirm) {

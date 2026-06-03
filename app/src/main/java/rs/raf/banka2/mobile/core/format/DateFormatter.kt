@@ -99,4 +99,24 @@ object DateFormatter {
 
     fun nowIsoLocalDate(): String =
         LocalDate.now(ZoneId.systemDefault()).format(DateTimeFormatter.ISO_LOCAL_DATE)
+
+    /**
+     * R1-597: validacija datumskog filtera PRE BE poziva. Slobodan unos
+     * ("abc", "2026-13-99", "30.05.2026") je ranije isao direktno BE-u koji radi
+     * `LocalDate.parse`/`LocalDateTime.parse` → `DateTimeParseException` → 400/500.
+     * Prihvatamo SAMO striktni `YYYY-MM-DD` (ISO_LOCAL_DATE) jer BE date filteri
+     * ocekuju bas taj oblik (servisi ga normalizuju u `...T00:00:00`).
+     *
+     * Prazan/blank string je VALIDAN (znaci "bez filtera") — pozivalac sam odlucuje
+     * da li blank tretira kao null.
+     */
+    fun isValidIsoDate(input: String?): Boolean {
+        if (input.isNullOrBlank()) return true
+        return try {
+            LocalDate.parse(input.trim(), DateTimeFormatter.ISO_LOCAL_DATE)
+            true
+        } catch (_: DateTimeParseException) {
+            false
+        }
+    }
 }

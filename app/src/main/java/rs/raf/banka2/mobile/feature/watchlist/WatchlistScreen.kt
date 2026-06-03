@@ -388,8 +388,9 @@ private fun WatchlistItemRow(
                             tint = if (change >= 0) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error,
                         )
                         Spacer(Modifier.size(2.dp))
+                        // R1 812: dailyChange je PROCENAT (BE changePercent) -> prikazi sa %.
                         Text(
-                            item.dailyChange.setScale(2, RoundingMode.HALF_UP).toPlainString(),
+                            "${item.dailyChange.setScale(2, RoundingMode.HALF_UP).toPlainString()}%",
                             style = MaterialTheme.typography.labelSmall,
                             color = if (change >= 0) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error,
                         )

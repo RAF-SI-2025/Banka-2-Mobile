@@ -34,9 +34,19 @@ class OtcDiscoveryViewModel @Inject constructor(
     init {
         // ME-04: za CLIENT-a bez TRADE_STOCKS permisije, NE pokrecemo refresh().
         // UI prikazuje "Nemate dozvolu" umesto trade UI.
+        // P1-fe-mobile-authz-1 (1753): FAIL-CLOSED kad profila nema (process death
+        // — SessionManager je in-memory). Ranije `?: true` (ALLOW) → klijent bez
+        // TRADE_STOCKS bi posle process-death-a dobio pun OTC trade UI.
         val profile = (sessionManager.state.value as? SessionState.LoggedIn)?.profile
-        val canTrade = profile?.canAccessTrading ?: true
-        _state.update { it.copy(canTrade = canTrade) }
+        val canTrade = profile?.canAccessTrading ?: false
+        // [SEC] R1-591/600: OTC ponude (intra) sme da inicira SAMO klijent (sa
+        // canTradeStocks) ili supervizor/admin — NE agent. Ranije se UI gejtovao
+        // na `canTrade` (= canAccessTrading) koje je TRUE i za AGENT-a
+        // (`!role.isClient`), pa je agent video "Posalji ponudu" i mogao da kreira
+        // OTC ponudu (Celina 4 Nova: agent ima samo discovery & details, NE OTC).
+        // FAIL-CLOSED kad profila nema. `UserRole.canAccessOtc` = Admin/Supervisor/Client.
+        val canSendOffer = profile != null && profile.role.canAccessOtc && profile.canAccessTrading
+        _state.update { it.copy(canTrade = canTrade, canSendOffer = canSendOffer) }
         if (canTrade) refresh()
     }
 
@@ -63,6 +73,12 @@ class OtcDiscoveryViewModel @Inject constructor(
         premium: Double,
         settlementDate: String
     ) = viewModelScope.launch {
+        // [SEC] R1-591/600: VM-level guard — i ako UI nekako prikaze dugme
+        // (npr. stale state), agent NE sme da posalje OTC ponudu. FAIL-CLOSED.
+        if (!_state.value.canSendOffer) {
+            _state.update { it.copy(error = "Nemate dozvolu za slanje OTC ponude.") }
+            return@launch
+        }
         val request = CreateOtcOfferDto(
             listingId = listing.listingId,
             sellerUserId = listing.sellerUserId,
@@ -100,7 +116,13 @@ data class OtcDiscoveryState(
     val listings: List<OtcListingDto> = emptyList(),
     val error: String? = null,
     val submitting: Boolean = false,
-    val canTrade: Boolean = true
+    val canTrade: Boolean = true,
+    /**
+     * [SEC] R1-591/600: sme li korisnik da INICIRA OTC ponudu. TRUE samo za
+     * klijenta (sa canTradeStocks) i supervizora/admina — NIKAD agent. Default
+     * `false` (FAIL-CLOSED). UI sakriva "Posalji ponudu" kad je false.
+     */
+    val canSendOffer: Boolean = false
 )
 
 sealed interface OtcDiscoveryEvent {
