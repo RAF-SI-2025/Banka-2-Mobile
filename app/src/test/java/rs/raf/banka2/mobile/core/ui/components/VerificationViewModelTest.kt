@@ -126,4 +126,24 @@ class VerificationViewModelTest {
         vm.fillFromActiveCode()
         assertEquals("", vm.state.value.code)
     }
+
+    @Test
+    fun initOnOpen_populatesDevCode_whenServerExposesActiveOtp() = runTest(dispatcher) {
+        // Mobilni-kao-autentifikator: kada server izlaze aktivan kod
+        // (payments.expose-active-otp=true), initOnOpen ga dovuce i prikaze u
+        // modalu — i u release build-u (klijentski DEBUG gate je uklonjen; server
+        // je jedini autoritet o izlaganju). fillFromActiveCode ga potom upisuje.
+        coEvery { repository.getActiveOtp() } returns ApiResult.Success(
+            OtpResponseDto(active = true, code = "072758")
+        )
+        val vm = vm()
+        vm.initOnOpen()
+        advanceUntilIdle()
+
+        assertEquals("072758", vm.state.value.devCode)
+        coVerify { repository.getActiveOtp() }
+
+        vm.fillFromActiveCode()
+        assertEquals("072758", vm.state.value.code)
+    }
 }

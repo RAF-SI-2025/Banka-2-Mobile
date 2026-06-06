@@ -43,7 +43,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import rs.raf.banka2.mobile.BuildConfig
 import rs.raf.banka2.mobile.core.auth.TotpHelpers
 import rs.raf.banka2.mobile.core.network.ApiResult
 import rs.raf.banka2.mobile.data.repository.PaymentRepository
@@ -264,12 +263,15 @@ class VerificationViewModel @Inject constructor(
                 requestingEmail = false
             )
         }
-        // R1-580: "Aktivan kod" auto-fill (server-side dev/test OTP) je dev-only.
-        // U release build-u NIKAD ne dohvatamo niti prikazujemo aktivni TOTP/OTP
-        // kod — to bi efektivno zaobislo 2FA. Iza BuildConfig.DEBUG flag-a.
-        if (BuildConfig.DEBUG) {
-            viewModelScope.launch { fetchActiveCode() }
-        }
+        // Mobilni-kao-autentifikator: dovuci aktivni OTP kod i prikazi ga u
+        // modalu ("Aktivan kod" + "Popuni automatski"). Izlaganje koda je
+        // gejtovano NA SERVERU preko `payments.expose-active-otp`: kad je
+        // iskljuceno, GET /payments/my-otp vraca 404 -> devCode ostaje null ->
+        // modal ne prikazuje kod (fallback: eksterni TOTP authenticator ili
+        // email). Server je jedini autoritet o izlaganju (ranije je ovde stajao
+        // i dodatni klijentski BuildConfig.DEBUG gate, R1-580); zato i release
+        // build prikazuje kod kada ga server dozvoli.
+        viewModelScope.launch { fetchActiveCode() }
         viewModelScope.launch { paymentRepository.requestOtpToMobile() }
     }
 
